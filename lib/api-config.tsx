@@ -1,6 +1,5 @@
 "use client"
 
-import React, { ... } from "react"
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
 import type { ApiConfig } from "./types"
 

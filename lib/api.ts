@@ -1,6 +1,7 @@
 // lib/api.ts
-import React, { ... } from "react"
+import { useCallback } from "react"
 import { useApiConfig } from "./api-config"
+
 
 export function useApi() {
   const { buildUrl } = useApiConfig()
