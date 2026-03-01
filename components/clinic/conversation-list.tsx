@@ -1,6 +1,5 @@
 "use client"
 
-import React, { ... } from "react"
 import { useState } from "react"
 import type { Conversation } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
