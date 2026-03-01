@@ -1,6 +1,5 @@
 "use client"
 
-import React, { ... } from "react"
 import { useApi } from "@/lib/api";
 import { useCallback, useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth-context"

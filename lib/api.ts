@@ -1,4 +1,5 @@
 // lib/api.ts
+import React, { ... } from "react"
 import { useApiConfig } from "./api-config"
 
 export function useApi() {
