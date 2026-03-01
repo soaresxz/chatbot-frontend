@@ -1,0 +1,20 @@
+# Força LF em todos os arquivos de código (melhor prática para projetos web)
+* text=auto eol=lf
+
+# Arquivos específicos do Next.js/TypeScript
+*.ts      text eol=lf
+*.tsx     text eol=lf
+*.js      text eol=lf
+*.mjs     text eol=lf
+*.json    text eol=lf
+*.md      text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.css     text eol=lf
+*.html    text eol=lf
+
+# Ignora binários
+*.png     binary
+*.jpg     binary
+*.svg     binary
+*.db      binary
