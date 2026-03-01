@@ -32,42 +32,6 @@ import {
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
-export default function ConversasPage() {
-  const { listConversations } = useApi();
-  const [conversations, setConversations] = useState([]);
-
-  const tenant_id = "clinica_odonto_sorriso";
-
-  useEffect(() => {
-    loadConversations();
-  }, []);
-
-  const loadConversations = async () => {
-    const data = await listConversations(tenant_id);
-    setConversations(data.conversations || []);
-  };
-
-  const handleAssumir = async (patient_phone: string) => {
-    const { assumeConversation } = useApi();
-    await assumeConversation(tenant_id, patient_phone);
-    alert("✅ Conversa assumida! Agora você pode responder.");
-    loadConversations(); // atualiza lista
-  };
-
-function formatTimeAgo(dateStr: string): string {
-  try {
-    const diff = Date.now() - new Date(dateStr).getTime()
-    const minutes = Math.floor(diff / 60000)
-    if (minutes < 1) return "agora"
-    if (minutes < 60) return `${minutes}min`
-    const hours = Math.floor(minutes / 60)
-    if (hours < 24) return `${hours}h`
-    const days = Math.floor(hours / 24)
-    return `${days}d`
-  } catch {
-    return ""
-  }
-}
 
 export default function ConversasPage() {
   const { user } = useAuth()
