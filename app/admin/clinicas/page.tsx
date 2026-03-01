@@ -28,57 +28,41 @@ export default function ClinicasPage() {
   }, []);
 
 
-  const loadClinicas = async () => {
-    try {
-      const data = await listTenants();
-      setTenants(data.clinicas || data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchTenants = useCallback(async () => {
+ const loadClinicas = async () => {
     if (!config.apiKey) {
       setLoading(false)
       return
     }
+
+  
+    }
     setLoading(true)
     try {
-      const url = buildUrl("/admin/tenants")
-      const res = await fetch(url)
-      if (!res.ok) throw new Error("Falha ao buscar clinicas")
-      const data = await res.json()
-      const list = Array.isArray(data) ? data : data.tenants || []
-      setTenants(list)
+      const data = await listTenants()           // usa o hook (mais limpo)
+      // ou se preferir chamar direto:
+      // const res = await fetch(buildUrl("/admin/tenants"))
+      // const data = await res.json()
+
+      setTenants(data.clinicas || [])
+      setTotal(data.total || data.clinicas?.length || 0)
     } catch (err) {
-      toast.error("Erro ao carregar clinicas. Verifique suas configuracoes de API.")
+      console.error("Erro ao carregar clínicas:", err)
+      toast.error("Erro ao carregar clínicas. Verifique a conexão com a API.")
     } finally {
       setLoading(false)
     }
-  }, [buildUrl, config.apiKey])
+  }
 
   useEffect(() => {
-    fetchTenants()
-  }, [fetchTenants])
+    loadClinicas()
+  }, [config.apiKey])   // recarrega se a apiKey mudar
 
-  const filteredTenants = tenants.filter(
-    (t) =>
-      t.name?.toLowerCase().includes(search.toLowerCase()) ||
-      t.dentist_name?.toLowerCase().includes(search.toLowerCase()) ||
-      t.whatsapp_number?.includes(search)
+  // Filtro corrigido com os nomes reais do banco
+  const filteredTenants = tenants.filter((t) =>
+    t.nome?.toLowerCase().includes(search.toLowerCase()) ||
+    t.dentista?.toLowerCase().includes(search.toLowerCase()) ||
+    t.whatsapp?.includes(search)
   )
-
-  const url = buildUrl("/admin/tenants", {
-    search: search || undefined,
-  })
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const searchParam = params.get("search") || ""
-    setSearch(searchParam)
-  }, [])
 
   async function handleCreateClinic(data: {
     name: string
