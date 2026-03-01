@@ -1,5 +1,5 @@
 "use client"
-
+import { useApi } from "@/lib/api";
 import { useCallback, useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { useApiConfig } from "@/lib/api-config"
@@ -30,6 +30,28 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+
+export default function ConversasPage() {
+  const { listConversations } = useApi();
+  const [conversations, setConversations] = useState([]);
+
+  const tenant_id = "clinica_odonto_sorriso";
+
+  useEffect(() => {
+    loadConversations();
+  }, []);
+
+  const loadConversations = async () => {
+    const data = await listConversations(tenant_id);
+    setConversations(data.conversations || []);
+  };
+
+  const handleAssumir = async (patient_phone: string) => {
+    const { assumeConversation } = useApi();
+    await assumeConversation(tenant_id, patient_phone);
+    alert("✅ Conversa assumida! Agora você pode responder.");
+    loadConversations(); // atualiza lista
+  };
 
 function formatTimeAgo(dateStr: string): string {
   try {

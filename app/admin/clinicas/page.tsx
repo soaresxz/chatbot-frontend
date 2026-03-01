@@ -1,4 +1,7 @@
-"use client"
+"use client";
+
+
+import { useApi } from "@/lib/api";
 
 import { useCallback, useEffect, useState } from "react"
 import { useApiConfig } from "@/lib/api-config"
@@ -11,12 +14,30 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Building2, Plus, RefreshCw, Search } from "lucide-react"
 
+
 export default function ClinicasPage() {
+  const { listTenants, createTenant } = useApi()
   const { buildUrl, config } = useApiConfig()
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [createOpen, setCreateOpen] = useState(false)
+
+  useEffect(() => {
+    loadClinicas();
+  }, []);
+
+
+  const loadClinicas = async () => {
+    try {
+      const data = await listTenants();
+      setTenants(data.clinicas || data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchTenants = useCallback(async () => {
     if (!config.apiKey) {
