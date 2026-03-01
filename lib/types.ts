@@ -12,7 +12,7 @@ export interface Tenant {
   name: string
   dentist_name: string
   whatsapp_number: string
-  plan: string
+  plan: "basic" | "premium"
   is_active: boolean
   created_at?: string
 }
