@@ -74,6 +74,23 @@ export default function ConversasPage() {
     }
   }, [buildUrl, config.apiKey, tenantId])
 
+function formatTimeAgo(dateStr: string): string {
+  try {
+    const date = new Date(dateStr);
+    const diff = Date.now() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+
+    if (minutes < 1) return "agora";
+    if (minutes < 60) return `${minutes}min`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h`;
+    const days = Math.floor(hours / 24);
+    return `${days}d`;
+  } catch {
+    return "";
+  }
+}
+
   const fetchMessages = useCallback(
     async (phone: string) => {
       if (!config.apiKey || !tenantId) return
