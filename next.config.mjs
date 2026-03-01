@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',           // ← ESSENCIAL para Railway
   experimental: {
-    serverExternalPackages: ["..."],
+    serverExternalPackages: [],   // vazio por enquanto
   },
 }
 
