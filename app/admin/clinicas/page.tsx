@@ -70,6 +70,16 @@ export default function ClinicasPage() {
       t.whatsapp_number?.includes(search)
   )
 
+  const url = buildUrl("/admin/tenants", {
+    search: search || undefined,
+  })
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const searchParam = params.get("search") || ""
+    setSearch(searchParam)
+  }, [])
+
   async function handleCreateClinic(data: {
     name: string
     dentist_name: string
