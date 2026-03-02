@@ -1,29 +1,26 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react"
-import { useApiConfig } from "@/lib/api-config"
-import { useApi } from "@/lib/api";
-import { toast } from "sonner"
-import type { Tenant } from "@/lib/types"
-import { ClinicsTable } from "@/components/admin/clinics-table"
-import { CreateClinicDialog } from "@/components/admin/create-clinic-dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Building2, Plus, RefreshCw, Search } from "lucide-react"
-
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import { useApi } from '@/lib/hooks/useApi';
+import { useApiConfig } from '@/lib/hooks/useApiConfig';
+import type { Tenant } from '@/lib/types';
 
 export default function ClinicasPage() {
   const { listTenants } = useApi();
-  const { buildUrl, config } = useApiConfig();
+  const { config } = useApiConfig();
+
   const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [ total, setTotal ] = useState(0); // ✅ FIX 2: estado total removido, não é necessário
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
 
-  const loadClinics = useCallback(async () => {
+  const loadClinicas = async () => {
+    console.log("🔄 Iniciando loadClinicas... apiKey:", !!config.apiKey);
+
     if (!config.apiKey) {
+      console.warn("⚠️ Sem apiKey no config");
       setLoading(false);
       return;
     }
@@ -31,121 +28,109 @@ export default function ClinicasPage() {
     setLoading(true);
     try {
       const data = await listTenants();
-      setTenants(data.tenants ?? data ?? []);
-      setTotal(data.total || (data.tenants ? data.tenants.length : 0)); // ✅ FIX 2: total calculado a partir dos tenants, se disponível
+      console.log("✅ Dados recebidos do backend:", data);
+
+      const clinicasList = data?.clinicas || [];
+      setTenants(clinicasList);
+      setTotal(data?.total || clinicasList.length);
+
+      console.log(`📊 Setou ${clinicasList.length} clínicas no estado`);
     } catch (err: any) {
-      console.error("Erro ao carregar clinicas:", err);
-      toast.error("Erro ao carregar clinicas. Verifique suas configuracoes de API.");
+      console.error("❌ Erro ao carregar clínicas:", err);
+      toast.error("Erro ao carregar clínicas. Verifique a API.");
     } finally {
       setLoading(false);
     }
-  }, [listTenants, config.apiKey]);
-
+  };
 
   useEffect(() => {
-    loadClinics();
+    loadClinicas();
   }, [config.apiKey]);
 
-  const filteredTenants = Array.isArray(tenants) ? tenants.filter((t) => 
-    t.name?.toLowerCase().includes(search.toLowerCase()) ||
-    t.dentist_name?.toLowerCase().includes(search.toLowerCase()) ||
-    t.whatsapp_number?.includes(search)
-  ) : [];
-  // ✅ FIX 3: criação via POST com body JSON (não GET com query params)
-  async function handleCreateClinic(data: {
-    name: string
-    dentist_name: string
-    whatsapp_number: string
-    plan: string
-  }) {
-    try {
-      const res = await fetch(buildUrl("/admin/create-tenant"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      })
-      if (!res.ok) throw new Error("Falha ao criar clinica")
-      toast.success("Clinica criada com sucesso!")
-      setCreateOpen(false)
-      await loadClinics() // ✅ FIX 1: recarrega a lista após criação, usando a função de carregamento que já existe
-    } catch (err: any) {
-      toast.error("Erro ao criar clinica. Tente novamente.")
-    }
-  }
+  // Filtro seguro
+  const filteredTenants = Array.isArray(tenants)
+    ? tenants.filter((t) =>
+        t.nome?.toLowerCase().includes(search.toLowerCase()) ||
+        t.dentista?.toLowerCase().includes(search.toLowerCase()) ||
+        t.whatsapp?.includes(search)
+      )
+    : [];
 
+  console.log("🎯 Estado atual - tenants:", tenants.length, " | filtered:", filteredTenants.length);
+
+  // ==================== JSX ====================
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-balance">Clinicas</h1>
-          <p className="text-muted-foreground">
-            Gerencie todas as clinicas cadastradas na plataforma
-          </p>
+          <h1 className="text-3xl font-bold">Clínicas</h1>
+          <p className="text-gray-400">Gerencie todas as clínicas cadastradas na plataforma</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nova Clinica
-        </Button>
+        <button
+          onClick={() => setCreateOpen(true)}
+          className="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-xl font-medium flex items-center gap-2"
+        >
+          + Nova Clínica
+        </button>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nome, dentista ou WhatsApp..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Button variant="outline" size="icon" onClick={loadClinics} aria-label="Atualizar lista">
-          <RefreshCw className="h-4 w-4" />
-        </Button>
+      {/* Barra de busca */}
+      <div className="relative mb-6">
+        <input
+          type="text"
+          placeholder="Buscar por nome, dentista ou WhatsApp..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-3 pl-12 focus:outline-none focus:border-green-600"
+        />
+        <button
+          onClick={loadClinicas}
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500 hover:text-green-400"
+        >
+          🔄 Atualizar
+        </button>
       </div>
 
-      {!config.apiKey ? (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-card py-16">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
-            <Building2 className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <div className="text-center">
-            <h3 className="text-lg font-semibold">API nao configurada</h3>
-            <p className="text-sm text-muted-foreground">
-              Va ate Configuracoes para definir sua API Key antes de gerenciar clinicas.
-            </p>
-          </div>
-        </div>
-      ) : loading ? (
-        <div className="flex flex-col gap-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full rounded-lg" />
-          ))}
-        </div>
-      ) : filteredTenants.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-card py-16">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
-            <Building2 className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <div className="text-center">
-            <h3 className="text-lg font-semibold">
-              {search ? "Nenhuma clinica encontrada" : "Nenhuma clinica cadastrada"}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {search
-                ? "Tente alterar os termos de busca"
-                : "Crie a primeira clinica clicando no botao acima"}
-            </p>
-          </div>
-        </div>
-      ) : (
-        <ClinicsTable tenants={filteredTenants} onRefresh={loadClinics} />
+      {loading && (
+        <div className="text-center py-20 text-gray-400">Carregando clínicas...</div>
       )}
 
-      <CreateClinicDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onSubmit={handleCreateClinic}
-      />
+      {!loading && filteredTenants.length === 0 && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-16 text-center">
+          <div className="mx-auto w-16 h-16 bg-zinc-800 rounded-2xl flex items-center justify-center mb-6">
+            📋
+          </div>
+          <h3 className="text-2xl font-semibold mb-2">Nenhuma clínica cadastrada</h3>
+          <p className="text-gray-400">Crie a primeira clínica clicando no botão acima</p>
+        </div>
+      )}
+
+      {!loading && filteredTenants.length > 0 && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden">
+          {/* AQUI VAI SUA TABELA */}
+          {/* Exemplo simples para testar: */}
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-zinc-800">
+                <th className="text-left p-6">Nome</th>
+                <th className="text-left p-6">Dentista</th>
+                <th className="text-left p-6">WhatsApp</th>
+                <th className="text-left p-6">Plano</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTenants.map((clinica) => (
+                <tr key={clinica.id} className="border-b border-zinc-800 hover:bg-zinc-800/50">
+                  <td className="p-6 font-medium">{clinica.nome}</td>
+                  <td className="p-6">{clinica.dentista}</td>
+                  <td className="p-6 text-green-400">{clinica.whatsapp}</td>
+                  <td className="p-6">{clinica.plano}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
-  )
+  );
 }
