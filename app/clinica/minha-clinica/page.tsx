@@ -115,7 +115,7 @@ export default function MinhaClinicaPage() {
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Valor mensal</span>
-                <span className="font-medium">R$ 297,00</span>
+                <span className="font-medium">R$ 397,00</span>
               </div>
             </div>
           </CardContent>

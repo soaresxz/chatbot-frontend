@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { useApiConfig } from "@/lib/api-config"
 import type { Conversation, Message } from "@/lib/types"
@@ -26,11 +26,28 @@ import {
   Phone,
   RefreshCw,
   Search,
+  Send,
   UserRound,
+  Wifi,
+  WifiOff,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
+function formatTimeAgo(dateStr: string): string {
+  try {
+    const date = new Date(dateStr)
+    const diff = Date.now() - date.getTime()
+    const minutes = Math.floor(diff / 60000)
+    if (minutes < 1) return "agora"
+    if (minutes < 60) return `${minutes}min`
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return `${hours}h`
+    return `${Math.floor(hours / 24)}d`
+  } catch {
+    return ""
+  }
+}
 
 export default function ConversasPage() {
   const { user } = useAuth()
@@ -46,9 +63,17 @@ export default function ConversasPage() {
     action: "take_over" | "release"
   } | null>(null)
   const [mobileShowChat, setMobileShowChat] = useState(false)
+  const [newMessage, setNewMessage] = useState("")
+  const [sendingMessage, setSendingMessage] = useState(false)
+  const [wsConnected, setWsConnected] = useState(false)
+
+  const wsRef = useRef<WebSocket | null>(null)
+  const selectedPhoneRef = useRef<string | null>(null)
+  const reconnectTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const tenantId = user?.tenant_id || ""
 
+  // ─── FETCH CONVERSATIONS ───────────────────────────────────
   const fetchConversations = useCallback(async () => {
     if (!config.apiKey || !tenantId) {
       setLoadingConversations(false)
@@ -56,55 +81,29 @@ export default function ConversasPage() {
     }
     setLoadingConversations(true)
     try {
-      const url = buildUrl("/api/v1/conversations", { tenant_id: tenantId })
-      const res = await fetch(url)
-      if (!res.ok) throw new Error("Falha ao buscar conversas")
+      const res = await fetch(buildUrl("/api/v1/conversations", { tenant_id: tenantId }))
+      if (!res.ok) throw new Error()
       const data = await res.json()
-      const list: Conversation[] = Array.isArray(data)
-        ? data
-        : data.conversations || []
-      setConversations(list)
+      setConversations(Array.isArray(data) ? data : data.conversations || [])
     } catch {
-      toast.error(
-        "Erro ao carregar conversas. Verifique suas configuracoes de API."
-      )
+      toast.error("Erro ao carregar conversas.")
     } finally {
       setLoadingConversations(false)
     }
   }, [buildUrl, config.apiKey, tenantId])
 
-function formatTimeAgo(dateStr: string): string {
-  try {
-    const date = new Date(dateStr);
-    const diff = Date.now() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-
-    if (minutes < 1) return "agora";
-    if (minutes < 60) return `${minutes}min`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h`;
-    const days = Math.floor(hours / 24);
-    return `${days}d`;
-  } catch {
-    return "";
-  }
-}
-
+  // ─── FETCH MESSAGES ───────────────────────────────────────
   const fetchMessages = useCallback(
     async (phone: string) => {
       if (!config.apiKey || !tenantId) return
       setLoadingMessages(true)
       try {
-        const url = buildUrl(`/api/v1/conversations/${encodeURIComponent(phone)}`, {
-          tenant_id: tenantId,
-        })
-        const res = await fetch(url)
-        if (!res.ok) throw new Error("Falha ao buscar mensagens")
+        const res = await fetch(
+          buildUrl(`/api/v1/conversations/${encodeURIComponent(phone)}`, { tenant_id: tenantId })
+        )
+        if (!res.ok) throw new Error()
         const data = await res.json()
-        const msgs: Message[] = Array.isArray(data)
-          ? data
-          : data.messages || []
-        setMessages(msgs)
+        setMessages(Array.isArray(data) ? data : data.messages || [])
       } catch {
         toast.error("Erro ao carregar mensagens.")
         setMessages([])
@@ -115,16 +114,113 @@ function formatTimeAgo(dateStr: string): string {
     [buildUrl, config.apiKey, tenantId]
   )
 
+  // ─── WEBSOCKET ────────────────────────────────────────────
+  const connectWebSocket = useCallback(() => {
+    if (!config.apiKey || !tenantId) return
+
+    const wsBase = config.baseUrl.replace(/^http/, "ws").replace(/\/+$/, "")
+    const ws = new WebSocket(`${wsBase}/ws`)
+    wsRef.current = ws
+
+    ws.onopen = () => {
+      setWsConnected(true)
+      console.log("✅ WebSocket conectado")
+    }
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+
+        // Nova mensagem recebida
+        if (data.type === "new_message") {
+          const msg = data.message
+          const phone = data.patient_phone || msg?.patient_phone
+
+          // Atualiza a lista de conversas (último msg + ordem)
+          setConversations((prev) => {
+            const exists = prev.find((c) => c.patient_phone === phone)
+            if (exists) {
+              return prev.map((c) =>
+                c.patient_phone === phone
+                  ? { ...c, last_message: msg.content, updated_at: msg.timestamp }
+                  : c
+              )
+            }
+            // Nova conversa apareceu
+            fetchConversations()
+            return prev
+          })
+
+          // Se a conversa está aberta, adiciona a mensagem em tempo real
+          if (selectedPhoneRef.current === phone) {
+            setMessages((prev) => {
+              const alreadyExists = prev.find((m) => m.id === msg.id)
+              if (alreadyExists) return prev
+              return [...prev, msg]
+            })
+          } else {
+            // Notifica que chegou mensagem em outra conversa
+            toast.info(`Nova mensagem de ${phone}`)
+          }
+        }
+
+        // Atualização de status da conversa
+        if (data.type === "status_change") {
+          setConversations((prev) =>
+            prev.map((c) =>
+              c.patient_phone === data.patient_phone
+                ? { ...c, status: data.status }
+                : c
+            )
+          )
+        }
+      } catch {
+        // ignora mensagens malformadas
+      }
+    }
+
+    ws.onclose = () => {
+      setWsConnected(false)
+      console.log("🔌 WebSocket desconectado. Reconectando em 3s...")
+      reconnectTimeout.current = setTimeout(connectWebSocket, 3000)
+    }
+
+    ws.onerror = () => {
+      ws.close()
+    }
+  }, [config.apiKey, config.baseUrl, tenantId, fetchConversations])
+
+  // ─── EFFECTS ──────────────────────────────────────────────
   useEffect(() => {
     fetchConversations()
   }, [fetchConversations])
 
   useEffect(() => {
     if (selectedPhone) {
+      selectedPhoneRef.current = selectedPhone
       fetchMessages(selectedPhone)
+    } else {
+      selectedPhoneRef.current = null
     }
   }, [selectedPhone, fetchMessages])
 
+  useEffect(() => {
+    connectWebSocket()
+    return () => {
+      if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current)
+      wsRef.current?.close()
+    }
+  }, [connectWebSocket])
+
+  // Poll como fallback (a cada 15s) se WebSocket cair
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!wsConnected) fetchConversations()
+    }, 15000)
+    return () => clearInterval(interval)
+  }, [wsConnected, fetchConversations])
+
+  // ─── HANDLERS ─────────────────────────────────────────────
   function handleSelectConversation(phone: string) {
     setSelectedPhone(phone)
     setMobileShowChat(true)
@@ -138,22 +234,15 @@ function formatTimeAgo(dateStr: string): string {
 
   async function handleAssumir(phone: string) {
     try {
-      const url = buildUrl("/api/v1/conversations/assume", { tenant_id: tenantId })
-      const res = await fetch(url, {
+      const res = await fetch(buildUrl("/api/v1/conversations/assume", { tenant_id: tenantId }), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ patient_phone: phone }),
       })
-      if (!res.ok) throw new Error("Falha ao assumir conversa")
-      toast.success(
-        "Voce assumiu a conversa. O chatbot IA foi pausado para este paciente."
-      )
+      if (!res.ok) throw new Error()
+      toast.success("Você assumiu a conversa. O chatbot IA foi pausado.")
       setConversations((prev) =>
-        prev.map((c) =>
-          c.patient_phone === phone
-            ? { ...c, status: "human_mode" as const }
-            : c
-        )
+        prev.map((c) => c.patient_phone === phone ? { ...c, status: "human_mode" as const } : c)
       )
     } catch {
       toast.error("Erro ao assumir conversa.")
@@ -163,20 +252,15 @@ function formatTimeAgo(dateStr: string): string {
 
   async function handleDevolverIA(phone: string) {
     try {
-      const url = buildUrl("/api/v1/conversations/release", { tenant_id: tenantId })
-      const res = await fetch(url, {
+      const res = await fetch(buildUrl("/api/v1/conversations/release", { tenant_id: tenantId }), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ patient_phone: phone }),
       })
-      if (!res.ok) throw new Error("Falha ao devolver conversa")
+      if (!res.ok) throw new Error()
       toast.success("Conversa devolvida para a IA.")
       setConversations((prev) =>
-        prev.map((c) =>
-          c.patient_phone === phone
-            ? { ...c, status: "ai_mode" as const }
-            : c
-        )
+        prev.map((c) => c.patient_phone === phone ? { ...c, status: "ai_mode" as const } : c)
       )
     } catch {
       toast.error("Erro ao devolver conversa para a IA.")
@@ -184,6 +268,38 @@ function formatTimeAgo(dateStr: string): string {
     setConfirmAction(null)
   }
 
+  async function handleSendMessage() {
+    if (!newMessage.trim() || !selectedPhone || !tenantId) return
+    setSendingMessage(true)
+    try {
+      const res = await fetch(buildUrl("/api/human-send"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenant_id: tenantId,
+          patient_phone: selectedPhone,
+          message: newMessage.trim(),
+        }),
+      })
+      if (!res.ok) throw new Error()
+
+      // Adiciona a mensagem localmente imediatamente
+      const optimisticMsg: Message = {
+        id: `temp_${Date.now()}`,
+        content: newMessage.trim(),
+        direction: "out",
+        timestamp: new Date().toISOString(),
+      }
+      setMessages((prev) => [...prev, optimisticMsg])
+      setNewMessage("")
+    } catch {
+      toast.error("Erro ao enviar mensagem.")
+    } finally {
+      setSendingMessage(false)
+    }
+  }
+
+  // ─── DERIVED STATE ────────────────────────────────────────
   const filtered = conversations.filter(
     (c) =>
       c.patient_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -191,36 +307,26 @@ function formatTimeAgo(dateStr: string): string {
       c.last_message?.toLowerCase().includes(search.toLowerCase())
   )
 
-  const selectedConversation = conversations.find(
-    (c) => c.patient_phone === selectedPhone
-  )
-
+  const selectedConversation = conversations.find((c) => c.patient_phone === selectedPhone)
   const aiCount = conversations.filter((c) => c.status === "ai_mode").length
-  const humanCount = conversations.filter(
-    (c) => c.status === "human_mode"
-  ).length
+  const humanCount = conversations.filter((c) => c.status === "human_mode").length
+  const isHumanMode = selectedConversation?.status === "human_mode"
 
-  // No API key configured state
   if (!config.apiKey) {
     return (
       <div className="flex flex-col gap-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-balance">
-            Conversas
-          </h1>
-          <p className="text-muted-foreground">
-            Gerencie as conversas do WhatsApp da sua clinica
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">Conversas</h1>
+          <p className="text-muted-foreground">Gerencie as conversas do WhatsApp da sua clínica</p>
         </div>
         <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-card py-16">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
             <MessageSquare className="h-6 w-6 text-muted-foreground" />
           </div>
           <div className="text-center">
-            <h3 className="text-lg font-semibold">API nao configurada</h3>
+            <h3 className="text-lg font-semibold">API não configurada</h3>
             <p className="text-sm text-muted-foreground">
-              Va ate Configuracoes para definir sua API Key antes de visualizar
-              conversas.
+              Vá até Configurações para definir sua API Key.
             </p>
           </div>
         </div>
@@ -232,47 +338,39 @@ function formatTimeAgo(dateStr: string): string {
     <div className="flex h-[calc(100vh-3rem)] flex-col gap-0 -m-6">
       {/* Header */}
       <div className="flex items-center justify-between border-b bg-card/50 px-6 py-4">
-        <div className="flex items-center gap-4">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">Conversas</h1>
-            <p className="text-sm text-muted-foreground">
-              WhatsApp da clinica
-            </p>
-          </div>
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Conversas</h1>
+          <p className="text-sm text-muted-foreground">WhatsApp da clínica</p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Indicador WebSocket */}
+          <span
+            className={cn(
+              "flex items-center gap-1.5 text-xs",
+              wsConnected ? "text-green-500" : "text-muted-foreground"
+            )}
+          >
+            {wsConnected ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
+            {wsConnected ? "Ao vivo" : "Offline"}
+          </span>
           <Badge variant="secondary" className="gap-1.5 px-2.5 py-1">
             <span className="h-2 w-2 rounded-full bg-primary" />
             IA: {aiCount}
           </Badge>
-          <Badge
-            variant="outline"
-            className="gap-1.5 border-orange-500/30 px-2.5 py-1 text-orange-500"
-          >
+          <Badge variant="outline" className="gap-1.5 border-orange-500/30 px-2.5 py-1 text-orange-500">
             <span className="h-2 w-2 rounded-full bg-orange-500" />
             Humano: {humanCount}
           </Badge>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={fetchConversations}
-            className="h-8 w-8"
-            aria-label="Atualizar conversas"
-          >
+          <Button variant="ghost" size="icon" onClick={fetchConversations} className="h-8 w-8">
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      {/* Main content area */}
+      {/* Main */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left panel: Conversation list */}
-        <div
-          className={cn(
-            "flex w-full flex-col border-r md:w-80 lg:w-96",
-            mobileShowChat && "hidden md:flex"
-          )}
-        >
+        {/* Lista */}
+        <div className={cn("flex w-full flex-col border-r md:w-80 lg:w-96", mobileShowChat && "hidden md:flex")}>
           <div className="border-b p-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -304,9 +402,7 @@ function formatTimeAgo(dateStr: string): string {
                   <MessageSquare className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <p className="text-center text-sm text-muted-foreground">
-                  {search
-                    ? "Nenhuma conversa encontrada"
-                    : "Nenhuma conversa ainda"}
+                  {search ? "Nenhuma conversa encontrada" : "Nenhuma conversa ainda"}
                 </p>
               </div>
             ) : (
@@ -314,14 +410,10 @@ function formatTimeAgo(dateStr: string): string {
                 {filtered.map((conv) => (
                   <button
                     key={conv.patient_phone}
-                    onClick={() =>
-                      handleSelectConversation(conv.patient_phone)
-                    }
+                    onClick={() => handleSelectConversation(conv.patient_phone)}
                     className={cn(
                       "flex items-center gap-3 rounded-lg p-3 text-left transition-colors w-full",
-                      selectedPhone === conv.patient_phone
-                        ? "bg-accent"
-                        : "hover:bg-accent/50"
+                      selectedPhone === conv.patient_phone ? "bg-accent" : "hover:bg-accent/50"
                     )}
                   >
                     <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -357,24 +449,13 @@ function formatTimeAgo(dateStr: string): string {
           </div>
         </div>
 
-        {/* Right panel: Chat view */}
-        <div
-          className={cn(
-            "flex flex-1 flex-col",
-            !mobileShowChat && "hidden md:flex"
-          )}
-        >
+        {/* Chat */}
+        <div className={cn("flex flex-1 flex-col", !mobileShowChat && "hidden md:flex")}>
           {selectedPhone && selectedConversation ? (
             <>
               {/* Chat header */}
               <div className="flex items-center gap-3 border-b px-4 py-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleBackToList}
-                  className="h-8 w-8 md:hidden"
-                  aria-label="Voltar para lista"
-                >
+                <Button variant="ghost" size="icon" onClick={handleBackToList} className="h-8 w-8 md:hidden">
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -382,8 +463,7 @@ function formatTimeAgo(dateStr: string): string {
                 </div>
                 <div className="flex flex-1 flex-col">
                   <span className="text-sm font-medium">
-                    {selectedConversation.patient_name ||
-                      selectedConversation.patient_phone}
+                    {selectedConversation.patient_name || selectedConversation.patient_phone}
                   </span>
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Phone className="h-3 w-3" />
@@ -391,7 +471,23 @@ function formatTimeAgo(dateStr: string): string {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {selectedConversation.status === "ai_mode" ? (
+                  {isHumanMode ? (
+                    <>
+                      <Badge variant="outline" className="gap-1 border-orange-500/30 text-orange-500">
+                        <UserRound className="h-3 w-3" />
+                        Humano
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        onClick={() => setConfirmAction({ phone: selectedPhone, action: "release" })}
+                      >
+                        <Bot className="h-4 w-4" />
+                        Devolver para IA
+                      </Button>
+                    </>
+                  ) : (
                     <>
                       <Badge variant="secondary" className="gap-1">
                         <Bot className="h-3 w-3" />
@@ -400,60 +496,52 @@ function formatTimeAgo(dateStr: string): string {
                       <Button
                         size="sm"
                         className="gap-1.5 bg-orange-600 font-semibold text-orange-50 hover:bg-orange-700"
-                        onClick={() =>
-                          setConfirmAction({
-                            phone: selectedPhone,
-                            action: "take_over",
-                          })
-                        }
+                        onClick={() => setConfirmAction({ phone: selectedPhone, action: "take_over" })}
                       >
                         <UserRound className="h-4 w-4" />
                         Assumir Conversa
                       </Button>
                     </>
-                  ) : (
-                    <>
-                      <Badge
-                        variant="outline"
-                        className="gap-1 border-orange-500/30 text-orange-500"
-                      >
-                        <UserRound className="h-3 w-3" />
-                        Humano
-                      </Badge>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1.5"
-                        onClick={() =>
-                          setConfirmAction({
-                            phone: selectedPhone,
-                            action: "release",
-                          })
-                        }
-                      >
-                        <Bot className="h-4 w-4" />
-                        Devolver para IA
-                      </Button>
-                    </>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => fetchMessages(selectedPhone)}
-                    className="h-8 w-8"
-                    aria-label="Recarregar mensagens"
-                  >
+                  <Button variant="ghost" size="icon" onClick={() => fetchMessages(selectedPhone)} className="h-8 w-8">
                     <RefreshCw className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
 
-              {/* Chat messages */}
-              <ChatView
-                messages={messages}
-                loading={loadingMessages}
-                patientPhone={selectedPhone}
-              />
+              {/* Mensagens */}
+              <ChatView messages={messages} loading={loadingMessages} patientPhone={selectedPhone} />
+
+              {/* Input de resposta — só aparece em modo humano */}
+              {isHumanMode && (
+                <div className="border-t bg-card/50 p-3">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="Digite sua mensagem..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault()
+                          handleSendMessage()
+                        }
+                      }}
+                      disabled={sendingMessage}
+                      className="flex-1"
+                    />
+                    <Button
+                      size="icon"
+                      onClick={handleSendMessage}
+                      disabled={!newMessage.trim() || sendingMessage}
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
+                    Você está respondendo diretamente. A IA está pausada.
+                  </p>
+                </div>
+              )}
             </>
           ) : (
             <div className="flex flex-1 items-center justify-center">
@@ -462,12 +550,9 @@ function formatTimeAgo(dateStr: string): string {
                   <MessageSquare className="h-7 w-7 text-muted-foreground" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold">
-                    Selecione uma conversa
-                  </h3>
+                  <h3 className="text-lg font-semibold">Selecione uma conversa</h3>
                   <p className="text-sm text-muted-foreground">
-                    Escolha uma conversa na lista ao lado para visualizar as
-                    mensagens
+                    Escolha uma conversa na lista ao lado para visualizar as mensagens
                   </p>
                 </div>
               </div>
@@ -476,45 +561,29 @@ function formatTimeAgo(dateStr: string): string {
         </div>
       </div>
 
-      {/* Confirm dialog */}
-      <AlertDialog
-        open={!!confirmAction}
-        onOpenChange={(open) => {
-          if (!open) setConfirmAction(null)
-        }}
-      >
+      {/* Dialog de confirmação */}
+      <AlertDialog open={!!confirmAction} onOpenChange={(open) => { if (!open) setConfirmAction(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmAction?.action === "take_over"
-                ? "Assumir Conversa?"
-                : "Devolver para IA?"}
+              {confirmAction?.action === "take_over" ? "Assumir Conversa?" : "Devolver para IA?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction?.action === "take_over"
-                ? "O chatbot IA sera pausado para este paciente. Voce passara a responder diretamente. Deseja continuar?"
-                : "O chatbot IA voltara a responder automaticamente para este paciente. Deseja continuar?"}
+                ? "O chatbot IA será pausado para este paciente. Você passará a responder diretamente. Deseja continuar?"
+                : "O chatbot IA voltará a responder automaticamente. Deseja continuar?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (confirmAction?.action === "take_over") {
-                  handleAssumir(confirmAction.phone)
-                } else if (confirmAction) {
-                  handleDevolverIA(confirmAction.phone)
-                }
+                if (confirmAction?.action === "take_over") handleAssumir(confirmAction.phone)
+                else if (confirmAction) handleDevolverIA(confirmAction.phone)
               }}
-              className={
-                confirmAction?.action === "take_over"
-                  ? "bg-orange-600 text-orange-50 hover:bg-orange-700"
-                  : ""
-              }
+              className={confirmAction?.action === "take_over" ? "bg-orange-600 text-orange-50 hover:bg-orange-700" : ""}
             >
-              {confirmAction?.action === "take_over"
-                ? "Sim, Assumir"
-                : "Sim, Devolver"}
+              {confirmAction?.action === "take_over" ? "Sim, Assumir" : "Sim, Devolver"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
