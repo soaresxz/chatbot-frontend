@@ -29,7 +29,7 @@ const HARDCODED_USERS: { email: string; password: string; user: User }[] = [
       email: "clinica@exemplo.com",
       name: "Clinica Odonto Sorriso",
       role: "clinic_user" as UserRole,
-      tenant_id: "sandbox_twilio",
+      tenant_id: "clinica_odonto_sorriso",
     },
   },
 ]
