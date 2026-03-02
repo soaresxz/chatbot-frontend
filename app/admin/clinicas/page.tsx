@@ -12,12 +12,10 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Building2, Plus, RefreshCw, Search } from "lucide-react"
 
-
 export default function ClinicasPage() {
-  const { listTenants } = useApi();
-  const { buildUrl, config } = useApiConfig();
+  const { listTenants, createTenant } = useApi();
+  const { config } = useApiConfig();
   const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [ total, setTotal ] = useState(0); // ✅ FIX 2: estado total removido, não é necessário
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -27,48 +25,39 @@ export default function ClinicasPage() {
       setLoading(false);
       return;
     }
-
     setLoading(true);
     try {
       const data = await listTenants();
       setTenants(data.tenants ?? data ?? []);
-      setTotal(data.total || (data.tenants ? data.tenants.length : 0)); // ✅ FIX 2: total calculado a partir dos tenants, se disponível
-    } catch (err: any) {
-      console.error("Erro ao carregar clinicas:", err);
+    } catch {
       toast.error("Erro ao carregar clinicas. Verifique suas configuracoes de API.");
     } finally {
       setLoading(false);
     }
   }, [listTenants, config.apiKey]);
 
-
   useEffect(() => {
     loadClinics();
-  }, [config.apiKey]);
+  }, [loadClinics]);
 
-  const filteredTenants = Array.isArray(tenants) ? tenants.filter((t) => 
-    t.nome?.toLowerCase().includes(search.toLowerCase()) ||
-    t.dentista?.toLowerCase().includes(search.toLowerCase()) ||
-    t.whatsapp?.includes(search)
-  ) : [];
-  // ✅ FIX 3: criação via POST com body JSON (não GET com query params)
+  const filteredTenants = tenants.filter((t) =>
+    t.name?.toLowerCase().includes(search.toLowerCase()) ||
+    t.dentist_name?.toLowerCase().includes(search.toLowerCase()) ||
+    t.whatsapp_number?.includes(search)
+  );
+
   async function handleCreateClinic(data: {
-    nome: string
-    dentista: string
-    whatsapp: string
-    plano: string
+    name: string
+    dentist_name: string
+    whatsapp_number: string
+    plan: string
   }) {
     try {
-      const res = await fetch(buildUrl("/admin/create-tenant"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      })
-      if (!res.ok) throw new Error("Falha ao criar clinica")
+      await createTenant({ ...data, plan: data.plan as "basic" | "premium" })
       toast.success("Clinica criada com sucesso!")
       setCreateOpen(false)
-      await loadClinics() // ✅ FIX 1: recarrega a lista após criação, usando a função de carregamento que já existe
-    } catch (err: any) {
+      await loadClinics()
+    } catch {
       toast.error("Erro ao criar clinica. Tente novamente.")
     }
   }
