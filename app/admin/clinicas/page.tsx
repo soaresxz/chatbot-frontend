@@ -40,7 +40,7 @@ export default function ClinicasPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [listTenants, config.apiKey])
 
 
   useEffect(() => {
