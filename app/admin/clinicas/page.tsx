@@ -23,48 +23,34 @@ export default function ClinicasPage() {
   const [search, setSearch] = useState("")
   const [createOpen, setCreateOpen] = useState(false)
 
-  useEffect(() => {
-    loadClinicas();
-  }, []);
-
 
   const loadClinicas = async () => {
-    try {
-      const data = await listTenants();
-      setTenants(data.clinicas || data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchTenants = useCallback(async () => {
     if (!config.apiKey) {
       setLoading(false)
       return
     }
+
     setLoading(true)
+
     try {
-      const url = buildUrl("/admin/tenants")
-      const res = await fetch(url)
-      if (!res.ok) throw new Error("Falha ao buscar clinicas")
+      const res = await fetch(buildUrl("/admin/tenants"))
       const data = await res.json()
-      const list = Array.isArray(data) ? data : data.tenants || []
-      setTenants(list)
+
+      setTenants(data.tenants || [])
+      setTotal(data.total || data.clinicas?.length || 0)
     } catch (err) {
       toast.error("Erro ao carregar clinicas. Verifique suas configuracoes de API.")
     } finally {
       setLoading(false)
     }
-  }, [buildUrl, config.apiKey])
+  }
 
   useEffect(() => {
-    fetchTenants()
-  }, [fetchTenants])
+    loadClinicas()
+  }, [config.apiKey])
 
-  const filteredTenants = tenants.filter(
-    (t) =>
+
+  const filteredTenants = tenants.filter((t) =>
       t.name?.toLowerCase().includes(search.toLowerCase()) ||
       t.dentist_name?.toLowerCase().includes(search.toLowerCase()) ||
       t.whatsapp_number?.includes(search)
@@ -122,6 +108,15 @@ export default function ClinicasPage() {
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
+
+      {loading && filteredTenants.length === 0 && (
+        <div className="flex flex-col gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-lg" />
+          ))}
+        </div>
+      )}
+
 
       {!config.apiKey ? (
         <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-card py-16">
