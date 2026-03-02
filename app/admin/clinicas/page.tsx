@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useApiConfig } from "@/lib/api-config"
-import { useApiConfig } from "@/lib/hooks/api-config";
-import { useApi } from "@/lib/hooks/api";
+import { useApi } from "@/lib/api";
 import { toast } from "sonner"
 import type { Tenant } from "@/lib/types"
 import { ClinicsTable } from "@/components/admin/clinics-table"
