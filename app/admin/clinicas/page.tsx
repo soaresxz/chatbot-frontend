@@ -99,7 +99,7 @@ export default function ClinicasPage() {
             className="pl-10"
           />
         </div>
-        <Button variant="outline" size="icon" onClick={fetchTenants} aria-label="Atualizar lista">
+        <Button variant="outline" size="icon" onClick={loadClinics} aria-label="Atualizar lista">
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
@@ -139,7 +139,7 @@ export default function ClinicasPage() {
           </div>
         </div>
       ) : (
-        <ClinicsTable tenants={filteredTenants} onRefresh={fetchTenants} />
+        <ClinicsTable tenants={filteredTenants} onRefresh={loadClinics} />
       )}
 
       <CreateClinicDialog
