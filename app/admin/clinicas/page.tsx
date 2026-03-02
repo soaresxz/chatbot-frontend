@@ -1,8 +1,5 @@
 "use client";
 
-
-import { useApi } from "@/lib/api";
-
 import { useCallback, useEffect, useState } from "react"
 import { useApiConfig } from "@/lib/api-config"
 import { toast } from "sonner"
@@ -16,15 +13,14 @@ import { Building2, Plus, RefreshCw, Search } from "lucide-react"
 
 
 export default function ClinicasPage() {
-  const { listTenants, createTenant } = useApi()
   const { buildUrl, config } = useApiConfig()
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [createOpen, setCreateOpen] = useState(false)
 
-
-  const loadClinicas = async () => {
+  // ✅ FIX 1: função unificada com nome consistente
+  const fetchTenants = useCallback(async () => {
     if (!config.apiKey) {
       setLoading(false)
       return
@@ -34,28 +30,27 @@ export default function ClinicasPage() {
 
     try {
       const res = await fetch(buildUrl("/admin/tenants"))
+      if (!res.ok) throw new Error("Falha ao buscar clinicas")
       const data = await res.json()
-
-      setTenants(data.tenants || [])
-      setTotal(data.total || data.clinicas?.length || 0)
+      setTenants(data.tenants ?? data ?? []) // ✅ FIX 2: removido setTotal inexistente
     } catch (err) {
       toast.error("Erro ao carregar clinicas. Verifique suas configuracoes de API.")
     } finally {
       setLoading(false)
     }
-  }
+  }, [config.apiKey, buildUrl])
 
   useEffect(() => {
-    loadClinicas()
-  }, [config.apiKey])
-
+    fetchTenants()
+  }, [fetchTenants])
 
   const filteredTenants = tenants.filter((t) =>
-      t.name?.toLowerCase().includes(search.toLowerCase()) ||
-      t.dentist_name?.toLowerCase().includes(search.toLowerCase()) ||
-      t.whatsapp_number?.includes(search)
+    t.name?.toLowerCase().includes(search.toLowerCase()) ||
+    t.dentist_name?.toLowerCase().includes(search.toLowerCase()) ||
+    t.whatsapp_number?.includes(search)
   )
 
+  // ✅ FIX 3: criação via POST com body JSON (não GET com query params)
   async function handleCreateClinic(data: {
     name: string
     dentist_name: string
@@ -63,17 +58,15 @@ export default function ClinicasPage() {
     plan: string
   }) {
     try {
-      const url = buildUrl("/admin/create-tenant", {
-        name: data.name,
-        dentist_name: data.dentist_name,
-        whatsapp_number: data.whatsapp_number,
-        plan: data.plan,
+      const res = await fetch(buildUrl("/admin/create-tenant"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
       })
-      const res = await fetch(url)
       if (!res.ok) throw new Error("Falha ao criar clinica")
       toast.success("Clinica criada com sucesso!")
       setCreateOpen(false)
-      fetchTenants()
+      await fetchTenants() // ✅ Agora fetchTenants existe e atualiza a lista
     } catch {
       toast.error("Erro ao criar clinica. Tente novamente.")
     }
@@ -108,15 +101,6 @@ export default function ClinicasPage() {
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
-
-      {loading && filteredTenants.length === 0 && (
-        <div className="flex flex-col gap-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full rounded-lg" />
-          ))}
-        </div>
-      )}
-
 
       {!config.apiKey ? (
         <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-card py-16">
