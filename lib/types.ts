@@ -8,13 +8,12 @@ export interface User {
 }
 
 export interface Tenant {
-  id: string
-  name: string
-  dentist_name: string
-  whatsapp_number: string
-  plan: "basic" | "premium"
-  is_active: boolean
-  created_at?: string
+  id: string;
+  nome: string;
+  dentista: string;
+  whatsapp: string;
+  plano: string;
+  ativo: boolean;
 }
 
 export interface Conversation {
