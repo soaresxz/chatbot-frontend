@@ -53,10 +53,10 @@ export default function ClinicasPage() {
   ) : [];
   // ✅ FIX 3: criação via POST com body JSON (não GET com query params)
   async function handleCreateClinic(data: {
-    name: string
-    dentist_name: string
-    whatsapp_number: string
-    plan: string
+    nome: string
+    dentista: string
+    whatsapp: string
+    plano: string
   }) {
     try {
       const res = await fetch(buildUrl("/admin/create-tenant"), {

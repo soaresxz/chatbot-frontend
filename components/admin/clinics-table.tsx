@@ -51,32 +51,32 @@ export function ClinicsTable({ tenants }: ClinicsTableProps) {
                 key={tenant.id}
                 className="border-b last:border-0 transition-colors hover:bg-muted/30"
               >
-                <td className="px-4 py-3 font-medium">{tenant.name || tenant.id}</td>
+                <td className="px-4 py-3 font-medium">{tenant.nome || tenant.id}</td>
                 <td className="px-4 py-3 text-muted-foreground">
-                  {tenant.dentist_name || "-"}
+                  {tenant.dentista || "-"}
                 </td>
                 <td className="px-4 py-3">
                   <span className="flex items-center gap-1.5 text-muted-foreground">
                     <Phone className="h-3.5 w-3.5" />
-                    {tenant.whatsapp_number || "-"}
+                    {tenant.whatsapp || "-"}
                   </span>
                 </td>
                 <td className="px-4 py-3">
                   <Badge variant="secondary" className="capitalize">
-                    {tenant.plan || "basico"}
+                    {tenant.plano || "basico"}
                   </Badge>
                 </td>
                 <td className="px-4 py-3">
                   <Badge
-                    variant={tenant.is_active !== false ? "default" : "destructive"}
+                    variant={tenant.ativo !== false ? "default" : "destructive"}
                     className="gap-1"
                   >
                     <span
                       className={`h-1.5 w-1.5 rounded-full ${
-                        tenant.is_active !== false ? "bg-primary-foreground" : "bg-destructive-foreground"
+                        tenant.ativo !== false ? "bg-primary-foreground" : "bg-destructive-foreground"
                       }`}
                     />
-                    {tenant.is_active !== false ? "Ativa" : "Inativa"}
+                    {tenant.ativo !== false ? "Ativa" : "Inativa"}
                   </Badge>
                 </td>
                 <td className="px-4 py-3 text-right">
@@ -95,7 +95,7 @@ export function ClinicsTable({ tenants }: ClinicsTableProps) {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive">
                         <Power className="h-4 w-4" />
-                        {tenant.is_active !== false ? "Desativar" : "Ativar"}
+                        {tenant.ativo !== false ? "Desativar" : "Ativar"}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
