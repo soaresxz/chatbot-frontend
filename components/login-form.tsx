@@ -1,6 +1,5 @@
 "use client"
 
-import React, { ... } from "react"
 import { useState } from "react"
 import { Bot, Eye, EyeOff, Lock, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
