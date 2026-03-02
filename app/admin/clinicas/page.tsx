@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useApiConfig } from "@/lib/api-config"
+import { useApiConfig } from "@/lib/hooks/api-config";
+import { useApi } from "@/lib/hooks/api";
 import { toast } from "sonner"
 import type { Tenant } from "@/lib/types"
 import { ClinicsTable } from "@/components/admin/clinics-table"
@@ -13,36 +15,37 @@ import { Building2, Plus, RefreshCw, Search } from "lucide-react"
 
 
 export default function ClinicasPage() {
-  const { buildUrl, config } = useApiConfig()
+  const [ listTenants ] = useApi();
+  const [ buildUrl, config ] = useApiConfig()
   const [tenants, setTenants] = useState<Tenant[]>([])
+  const [ total, setTotal ] = useState(0) // ✅ FIX 2: estado total removido, não é necessário
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [createOpen, setCreateOpen] = useState(false)
 
-  // ✅ FIX 1: função unificada com nome consistente
-  const fetchTenants = useCallback(async () => {
+  const loadClinics = useCallback(async () => {
     if (!config.apiKey) {
       setLoading(false)
       return
     }
 
-    setLoading(true)
-
+    setLoading(true);
     try {
-      const res = await fetch(buildUrl("/admin/tenants"))
-      if (!res.ok) throw new Error("Falha ao buscar clinicas")
-      const data = await res.json()
-      setTenants(data.tenants ?? data ?? []) // ✅ FIX 2: removido setTotal inexistente
-    } catch (err) {
-      toast.error("Erro ao carregar clinicas. Verifique suas configuracoes de API.")
+      const data = await listTenants();
+      setTenants(data.tenants ?? data ?? [])
+      setTotal(data.total || (data.tenants ? data.tenants.length : 0)) // ✅ FIX 2: total calculado a partir dos tenants, se disponível
+    } catch (err: any) {
+      console.error("Erro ao carregar clinicas:", err)
+      toast.error("Erro ao carregar clinicas. Verifique suas configuracoes de API.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [config.apiKey, buildUrl])
+  }
+
 
   useEffect(() => {
-    fetchTenants()
-  }, [fetchTenants])
+    loadClinics()
+  }, [config.apiKey]);
 
   const filteredTenants = tenants.filter((t) =>
     t.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -66,8 +69,8 @@ export default function ClinicasPage() {
       if (!res.ok) throw new Error("Falha ao criar clinica")
       toast.success("Clinica criada com sucesso!")
       setCreateOpen(false)
-      await fetchTenants() // ✅ Agora fetchTenants existe e atualiza a lista
-    } catch {
+      await loadClinics() // ✅ FIX 1: recarrega a lista após criação, usando a função de carregamento que já existe
+    } catch (err: any) {
       toast.error("Erro ao criar clinica. Tente novamente.")
     }
   }
