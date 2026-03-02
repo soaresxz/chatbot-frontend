@@ -9,11 +9,11 @@ export interface User {
 
 export interface Tenant {
   id: string;
-  nome: string;
-  dentista: string;
-  whatsapp: string;
-  plano: string;
-  ativo: boolean;
+  name: string;
+  dentist_name: string;
+  whatsapp_number: string;
+  plan: string;
+  active: boolean;
 }
 
 export interface Conversation {
