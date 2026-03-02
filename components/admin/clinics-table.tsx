@@ -1,6 +1,5 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
 import type { Tenant } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -25,35 +24,20 @@ export function ClinicsTable({ tenants }: ClinicsTableProps) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                Clinica
-              </th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                Dentista
-              </th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                WhatsApp
-              </th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                Plano
-              </th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                Status
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">
-                Acoes
-              </th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Clinica</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Dentista</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">WhatsApp</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Plano</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+              <th className="px-4 py-3 text-right font-medium text-muted-foreground">Acoes</th>
             </tr>
           </thead>
           <tbody>
             {tenants.map((tenant) => (
-              <tr
-                key={tenant.id}
-                className="border-b last:border-0 transition-colors hover:bg-muted/30"
-              >
+              <tr key={tenant.id} className="border-b last:border-0 transition-colors hover:bg-muted/30">
                 <td className="px-4 py-3 font-medium">{tenant.name || tenant.id}</td>
                 <td className="px-4 py-3 text-muted-foreground">
-                  {tenant. || "-"}
+                  {tenant.dentist_name || "-"}
                 </td>
                 <td className="px-4 py-3">
                   <span className="flex items-center gap-1.5 text-muted-foreground">
@@ -68,15 +52,11 @@ export function ClinicsTable({ tenants }: ClinicsTableProps) {
                 </td>
                 <td className="px-4 py-3">
                   <Badge
-                    variant={tenant.active !== false ? "default" : "destructive"}
+                    variant={tenant.is_active !== false ? "default" : "destructive"}
                     className="gap-1"
                   >
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        tenant.active !== false ? "bg-primary-foreground" : "bg-destructive-foreground"
-                      }`}
-                    />
-                    {tenant.active !== false ? "Ativa" : "Inativa"}
+                    <span className={`h-1.5 w-1.5 rounded-full ${tenant.is_active !== false ? "bg-primary-foreground" : "bg-destructive-foreground"}`} />
+                    {tenant.is_active !== false ? "Ativa" : "Inativa"}
                   </Badge>
                 </td>
                 <td className="px-4 py-3 text-right">
@@ -95,7 +75,7 @@ export function ClinicsTable({ tenants }: ClinicsTableProps) {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive">
                         <Power className="h-4 w-4" />
-                        {tenant.active !== false ? "Desativar" : "Ativar"}
+                        {tenant.is_active !== false ? "Desativar" : "Ativar"}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
