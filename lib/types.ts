@@ -13,7 +13,7 @@ export interface Tenant {
   dentist_name: string;
   whatsapp_number: string;
   plan: string;
-  active: boolean;
+  is_active: boolean;
 }
 
 export interface Conversation {

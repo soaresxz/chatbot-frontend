@@ -52,11 +52,11 @@ export function ClinicsTable({ tenants }: ClinicsTableProps) {
                 </td>
                 <td className="px-4 py-3">
                   <Badge
-                    variant={tenant.is_active !== false ? "default" : "destructive"}
+                    variant={tenant.active !== false ? "default" : "destructive"}
                     className="gap-1"
                   >
-                    <span className={`h-1.5 w-1.5 rounded-full ${tenant.is_active !== false ? "bg-primary-foreground" : "bg-destructive-foreground"}`} />
-                    {tenant.is_active !== false ? "Ativa" : "Inativa"}
+                    <span className={`h-1.5 w-1.5 rounded-full ${tenant.active !== false ? "bg-primary-foreground" : "bg-destructive-foreground"}`} />
+                    {tenant.active !== false ? "Ativa" : "Inativa"}
                   </Badge>
                 </td>
                 <td className="px-4 py-3 text-right">
