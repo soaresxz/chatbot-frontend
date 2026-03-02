@@ -46,12 +46,11 @@ export default function ClinicasPage() {
     loadClinics();
   }, [config.apiKey]);
 
-  const filteredTenants = tenants.filter((t) =>
+  const filteredTenants = Array.isArray(tenants) ? tenants.filter((t) => 
     t.name?.toLowerCase().includes(search.toLowerCase()) ||
     t.dentist_name?.toLowerCase().includes(search.toLowerCase()) ||
     t.whatsapp_number?.includes(search)
-  );
-
+  ) : [];
   // ✅ FIX 3: criação via POST com body JSON (não GET com query params)
   async function handleCreateClinic(data: {
     name: string
