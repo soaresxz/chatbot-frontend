@@ -44,7 +44,7 @@ export default function ClinicasPage() {
 
 
   useEffect(() => {
-    loadClinics()
+    loadClinics();
   }, [config.apiKey]);
 
   const filteredTenants = tenants.filter((t) =>
