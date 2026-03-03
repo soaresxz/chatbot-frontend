@@ -7,6 +7,7 @@ interface ApiConfigContextType {
   config: ApiConfig
   updateConfig: (config: ApiConfig) => void
   buildUrl: (path: string, params?: Record<string, string>) => string
+  authHeaders: () => Record<string, string>
 }
 
 const DEFAULT_CONFIG: ApiConfig = {
@@ -39,9 +40,6 @@ export function ApiConfigProvider({ children }: { children: React.ReactNode }) {
     (path: string, params?: Record<string, string>) => {
       const base = config.baseUrl.replace(/\/+$/, "")
       const url = new URL(`${base}${path}`)
-      if (config.apiKey) {
-        url.searchParams.set("api_key", config.apiKey)
-      }
       if (params) {
         Object.entries(params).forEach(([key, value]) => {
           url.searchParams.set(key, value)
@@ -52,8 +50,17 @@ export function ApiConfigProvider({ children }: { children: React.ReactNode }) {
     [config]
   )
 
+  // ✅ Retorna headers com JWT para usar em todas as chamadas autenticadas
+  const authHeaders = useCallback((): Record<string, string> => {
+    const token = localStorage.getItem("odontoia_token")
+    return {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    }
+  }, [])
+
   return (
-    <ApiConfigContext.Provider value={{ config, updateConfig, buildUrl }}>
+    <ApiConfigContext.Provider value={{ config, updateConfig, buildUrl, authHeaders }}>
       {children}
     </ApiConfigContext.Provider>
   )
