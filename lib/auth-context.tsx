@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
 import type { User, UserRole } from "./types"
 
+const API_BASE_URL = "https://chatbotia-production.up.railway.app"
+
 interface AuthContextType {
   user: User | null
   isLoading: boolean
@@ -12,59 +14,57 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const HARDCODED_USERS: { email: string; password: string; user: User }[] = [
-  {
-    email: "admin@odontoia.com",
-    password: "admin123",
-    user: {
-      email: "admin@odontoia.com",
-      name: "Administrador",
-      role: "super_admin" as UserRole,
-    },
-  },
-  {
-    email: "clinica@exemplo.com",
-    password: "123456",
-    user: {
-      email: "clinica@exemplo.com",
-      name: "Clinica Odonto Sorriso",
-      role: "clinic_user" as UserRole,
-      tenant_id: "clinica_odonto_sorriso",
-    },
-  },
-]
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    // Restaura sessão salva
     const stored = localStorage.getItem("odontoia_user")
-    if (stored) {
+    const token = localStorage.getItem("odontoia_token")
+    if (stored && token) {
       try {
         setUser(JSON.parse(stored))
       } catch {
         localStorage.removeItem("odontoia_user")
+        localStorage.removeItem("odontoia_token")
       }
     }
     setIsLoading(false)
   }, [])
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
-    const found = HARDCODED_USERS.find(
-      (u) => u.email === email && u.password === password
-    )
-    if (found) {
-      setUser(found.user)
-      localStorage.setItem("odontoia_user", JSON.stringify(found.user))
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      })
+
+      if (!res.ok) return false
+
+      const data = await res.json()
+
+      const userData: User = {
+        email: data.user.email,
+        name: data.user.name,
+        role: data.user.role as UserRole,
+        tenant_id: data.user.tenant_id ?? undefined,
+      }
+
+      setUser(userData)
+      localStorage.setItem("odontoia_user", JSON.stringify(userData))
+      localStorage.setItem("odontoia_token", data.access_token)
       return true
+    } catch {
+      return false
     }
-    return false
   }, [])
 
   const logout = useCallback(() => {
     setUser(null)
     localStorage.removeItem("odontoia_user")
+    localStorage.removeItem("odontoia_token")
   }, [])
 
   return (
