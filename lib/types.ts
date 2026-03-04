@@ -5,6 +5,7 @@ export interface User {
   name: string
   role: UserRole
   tenant_id?: string
+  plan?: string
 }
 
 export interface Tenant {

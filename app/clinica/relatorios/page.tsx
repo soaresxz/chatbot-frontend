@@ -24,7 +24,7 @@ import {
 } from "recharts"
 import { Bot, MessageSquare, TrendingUp, Users, Clock, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { toast } from "sonner"
+import { PlanGate } from "@/components/clinic/plan-gate"
 
 const TEAL = "#14b8a6"
 const TEAL_LIGHT = "#2dd4bf"
@@ -65,6 +65,7 @@ function CustomTooltip({
         </p>
       ))}
     </div>
+    </PlanGate>
   )
 }
 
@@ -130,6 +131,7 @@ export default function ClinicRelatoriosPage() {
   ] : []
 
   return (
+    <PlanGate requiredPlan="pro" featureName="Relatórios">
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>

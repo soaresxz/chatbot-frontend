@@ -1,5 +1,6 @@
 "use client"
 
+import { PlanGate } from "@/components/clinic/plan-gate"
 import {
   Card,
   CardContent,
@@ -39,35 +40,12 @@ const MOCK_APPOINTMENTS = [
     service: "Clareamento",
     status: "confirmado",
   },
-  {
-    id: "4",
-    patient_name: "Carlos Lima",
-    patient_phone: "+5511955554444",
-    date: "2026-03-03",
-    time: "08:30",
-    service: "Extracao",
-    status: "pendente",
-  },
-  {
-    id: "5",
-    patient_name: "Fernanda Costa",
-    patient_phone: "+5511944443333",
-    date: "2026-03-03",
-    time: "11:00",
-    service: "Restauracao",
-    status: "confirmado",
-  },
 ]
 
 function statusBadge(status: string) {
-  if (status === "confirmado") {
-    return <Badge>Confirmado</Badge>
-  }
+  if (status === "confirmado") return <Badge>Confirmado</Badge>
   return (
-    <Badge
-      variant="outline"
-      className="border-orange-500/30 text-orange-500"
-    >
+    <Badge variant="outline" className="border-orange-500/30 text-orange-500">
       Pendente
     </Badge>
   )
@@ -84,135 +62,106 @@ function formatDate(dateStr: string) {
 
 export default function AgendamentosPage() {
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-balance">
-            Agendamentos
-          </h1>
-          <p className="text-muted-foreground">
-            Gerencie os agendamentos da sua clinica
-          </p>
-        </div>
-        <Button variant="outline" className="gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Atualizar
-        </Button>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Hoje
-            </CardTitle>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-              <Calendar className="h-4 w-4 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">3</div>
-            <p className="text-xs text-muted-foreground">agendamentos</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Amanha
-            </CardTitle>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-              <Calendar className="h-4 w-4 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">2</div>
-            <p className="text-xs text-muted-foreground">agendamentos</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Pendentes
-            </CardTitle>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10">
-              <Clock className="h-4 w-4 text-orange-500" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">2</div>
-            <p className="text-xs text-muted-foreground">
-              aguardando confirmacao
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Proximos Agendamentos</CardTitle>
-          <CardDescription>
-            Lista de consultas agendadas via WhatsApp
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-hidden rounded-lg border">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                      Paciente
-                    </th>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                      Data
-                    </th>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                      Horario
-                    </th>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                      Servico
-                    </th>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {MOCK_APPOINTMENTS.map((apt) => (
-                    <tr
-                      key={apt.id}
-                      className="border-b last:border-0 transition-colors hover:bg-muted/30"
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                            <UserRound className="h-4 w-4 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{apt.patient_name}</p>
-                            <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Phone className="h-3 w-3" />
-                              {apt.patient_phone}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {formatDate(apt.date)}
-                      </td>
-                      <td className="px-4 py-3 font-medium">{apt.time}</td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {apt.service}
-                      </td>
-                      <td className="px-4 py-3">{statusBadge(apt.status)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+    <PlanGate requiredPlan="pro" featureName="Agendamentos">
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Agendamentos</h1>
+            <p className="text-muted-foreground">Gerencie os agendamentos da sua clínica</p>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+          <Button variant="outline" className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Atualizar
+          </Button>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Hoje</CardTitle>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                <Calendar className="h-4 w-4 text-primary" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">3</div>
+              <p className="text-xs text-muted-foreground">agendamentos</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Amanhã</CardTitle>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                <Calendar className="h-4 w-4 text-primary" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">2</div>
+              <p className="text-xs text-muted-foreground">agendamentos</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Pendentes</CardTitle>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10">
+                <Clock className="h-4 w-4 text-orange-500" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">2</div>
+              <p className="text-xs text-muted-foreground">aguardando confirmação</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Próximos Agendamentos</CardTitle>
+            <CardDescription>Lista de consultas agendadas via WhatsApp</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-hidden rounded-lg border">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Paciente</th>
+                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Data</th>
+                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Horário</th>
+                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Serviço</th>
+                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {MOCK_APPOINTMENTS.map((apt) => (
+                      <tr key={apt.id} className="border-b last:border-0 transition-colors hover:bg-muted/30">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                              <UserRound className="h-4 w-4 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{apt.patient_name}</p>
+                              <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Phone className="h-3 w-3" />
+                                {apt.patient_phone}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">{formatDate(apt.date)}</td>
+                        <td className="px-4 py-3 font-medium">{apt.time}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{apt.service}</td>
+                        <td className="px-4 py-3">{statusBadge(apt.status)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </PlanGate>
   )
 }

@@ -19,7 +19,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Restaura sessão salva
     const stored = localStorage.getItem("odontoia_user")
     const token = localStorage.getItem("odontoia_token")
     if (stored && token) {
@@ -50,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         name: data.user.name,
         role: data.user.role as UserRole,
         tenant_id: data.user.tenant_id ?? undefined,
+        plan: data.user.plan ?? "basic", // ✅ salva o plano
       }
 
       setUser(userData)
