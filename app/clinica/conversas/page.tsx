@@ -281,7 +281,7 @@ export default function ConversasPage() {
     try {
       const res = await fetch(buildUrl("/api/human-send"), {
         method: "POST",
-        headers: authHeaders(), // ✅ token enviado
+        headers: authHeaders(),
         body: JSON.stringify({
           tenant_id: tenantId,
           patient_phone: selectedPhone,
@@ -290,13 +290,7 @@ export default function ConversasPage() {
       })
       if (!res.ok) throw new Error()
 
-      const optimisticMsg: Message = {
-        id: `temp_${Date.now()}`,
-        content: newMessage.trim(),
-        direction: "out",
-        timestamp: new Date().toISOString(),
-      }
-      setMessages((prev) => [...prev, optimisticMsg])
+      // ✅ Sem optimistic update — o WebSocket já adiciona a mensagem em tempo real
       setNewMessage("")
     } catch {
       toast.error("Erro ao enviar mensagem.")
