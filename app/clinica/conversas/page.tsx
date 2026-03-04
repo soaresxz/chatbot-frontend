@@ -139,9 +139,15 @@ export default function ConversasPage() {
       try {
         const data = JSON.parse(event.data)
 
+        // ✅ Ignora pings e mensagens de outros tenants
+        if (data.type === "ping") return
+        if (data.tenant_id && data.tenant_id !== tenantId) return
+
         if (data.type === "new_message") {
           const msg = data.message
           const phone = data.patient_phone || msg?.patient_phone
+
+          console.log("[WS] new_message | phone:", phone, "| selected:", selectedPhoneRef.current)
 
           setConversations((prev) => {
             const exists = prev.find((c) => c.patient_phone === phone)
