@@ -51,7 +51,8 @@ function formatTimeAgo(dateStr: string): string {
 
 export default function ConversasPage() {
   const { user } = useAuth()
-  const { buildUrl, config } = useApiConfig()
+  // ✅ authHeaders adicionado ao destructuring
+  const { buildUrl, config, authHeaders } = useApiConfig()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loadingConversations, setLoadingConversations] = useState(true)
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null)
@@ -75,13 +76,17 @@ export default function ConversasPage() {
 
   // ─── FETCH CONVERSATIONS ───────────────────────────────────
   const fetchConversations = useCallback(async () => {
-    if (!config.apiKey || !tenantId) {
+    const token = localStorage.getItem("odontoia_token")
+    if (!token || !tenantId) {
       setLoadingConversations(false)
       return
     }
     setLoadingConversations(true)
     try {
-      const res = await fetch(buildUrl("/api/v1/conversations", { tenant_id: tenantId }))
+      const res = await fetch(
+        buildUrl("/api/v1/conversations", { tenant_id: tenantId }),
+        { headers: authHeaders() } // ✅ token enviado
+      )
       if (!res.ok) throw new Error()
       const data = await res.json()
       setConversations(Array.isArray(data) ? data : data.conversations || [])
@@ -90,16 +95,18 @@ export default function ConversasPage() {
     } finally {
       setLoadingConversations(false)
     }
-  }, [buildUrl, config.apiKey, tenantId])
+  }, [buildUrl, authHeaders, tenantId])
 
   // ─── FETCH MESSAGES ───────────────────────────────────────
   const fetchMessages = useCallback(
     async (phone: string) => {
-      if (!config.apiKey || !tenantId) return
+      const token = localStorage.getItem("odontoia_token")
+      if (!token || !tenantId) return // ✅ guarda por token, não apiKey
       setLoadingMessages(true)
       try {
         const res = await fetch(
-          buildUrl(`/api/v1/conversations/${encodeURIComponent(phone)}`, { tenant_id: tenantId })
+          buildUrl(`/api/v1/conversations/${encodeURIComponent(phone)}`, { tenant_id: tenantId }),
+          { headers: authHeaders() } // ✅ token enviado
         )
         if (!res.ok) throw new Error()
         const data = await res.json()
@@ -111,12 +118,13 @@ export default function ConversasPage() {
         setLoadingMessages(false)
       }
     },
-    [buildUrl, config.apiKey, tenantId]
+    [buildUrl, authHeaders, tenantId]
   )
 
   // ─── WEBSOCKET ────────────────────────────────────────────
   const connectWebSocket = useCallback(() => {
-    if (!config.apiKey || !tenantId) return
+    const token = localStorage.getItem("odontoia_token")
+    if (!token || !tenantId) return // ✅ guarda por token, não apiKey
 
     const wsBase = config.baseUrl.replace(/^http/, "ws").replace(/\/+$/, "")
     const ws = new WebSocket(`${wsBase}/ws`)
@@ -131,12 +139,10 @@ export default function ConversasPage() {
       try {
         const data = JSON.parse(event.data)
 
-        // Nova mensagem recebida
         if (data.type === "new_message") {
           const msg = data.message
           const phone = data.patient_phone || msg?.patient_phone
 
-          // Atualiza a lista de conversas (último msg + ordem)
           setConversations((prev) => {
             const exists = prev.find((c) => c.patient_phone === phone)
             if (exists) {
@@ -146,12 +152,10 @@ export default function ConversasPage() {
                   : c
               )
             }
-            // Nova conversa apareceu
             fetchConversations()
             return prev
           })
 
-          // Se a conversa está aberta, adiciona a mensagem em tempo real
           if (selectedPhoneRef.current === phone) {
             setMessages((prev) => {
               const alreadyExists = prev.find((m) => m.id === msg.id)
@@ -159,12 +163,10 @@ export default function ConversasPage() {
               return [...prev, msg]
             })
           } else {
-            // Notifica que chegou mensagem em outra conversa
             toast.info(`Nova mensagem de ${phone}`)
           }
         }
 
-        // Atualização de status da conversa
         if (data.type === "status_change") {
           setConversations((prev) =>
             prev.map((c) =>
@@ -188,7 +190,7 @@ export default function ConversasPage() {
     ws.onerror = () => {
       ws.close()
     }
-  }, [config.apiKey, config.baseUrl, tenantId, fetchConversations])
+  }, [config.baseUrl, tenantId, fetchConversations])
 
   // ─── EFFECTS ──────────────────────────────────────────────
   useEffect(() => {
@@ -212,7 +214,6 @@ export default function ConversasPage() {
     }
   }, [connectWebSocket])
 
-  // Poll como fallback (a cada 15s) se WebSocket cair
   useEffect(() => {
     const interval = setInterval(() => {
       if (!wsConnected) fetchConversations()
@@ -236,7 +237,7 @@ export default function ConversasPage() {
     try {
       const res = await fetch(buildUrl("/api/v1/conversations/assume", { tenant_id: tenantId }), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(), // ✅ token enviado
         body: JSON.stringify({ patient_phone: phone }),
       })
       if (!res.ok) throw new Error()
@@ -254,7 +255,7 @@ export default function ConversasPage() {
     try {
       const res = await fetch(buildUrl("/api/v1/conversations/release", { tenant_id: tenantId }), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(), // ✅ token enviado
         body: JSON.stringify({ patient_phone: phone }),
       })
       if (!res.ok) throw new Error()
@@ -274,7 +275,7 @@ export default function ConversasPage() {
     try {
       const res = await fetch(buildUrl("/api/human-send"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(), // ✅ token enviado
         body: JSON.stringify({
           tenant_id: tenantId,
           patient_phone: selectedPhone,
@@ -283,7 +284,6 @@ export default function ConversasPage() {
       })
       if (!res.ok) throw new Error()
 
-      // Adiciona a mensagem localmente imediatamente
       const optimisticMsg: Message = {
         id: `temp_${Date.now()}`,
         content: newMessage.trim(),
@@ -312,7 +312,9 @@ export default function ConversasPage() {
   const humanCount = conversations.filter((c) => c.status === "human_mode").length
   const isHumanMode = selectedConversation?.status === "human_mode"
 
-  if (!config.apiKey) {
+  // ✅ guarda por token JWT, não por apiKey
+  const token = typeof window !== "undefined" ? localStorage.getItem("odontoia_token") : null
+  if (!token) {
     return (
       <div className="flex flex-col gap-6">
         <div>
@@ -324,9 +326,9 @@ export default function ConversasPage() {
             <MessageSquare className="h-6 w-6 text-muted-foreground" />
           </div>
           <div className="text-center">
-            <h3 className="text-lg font-semibold">API não configurada</h3>
+            <h3 className="text-lg font-semibold">Sessão não encontrada</h3>
             <p className="text-sm text-muted-foreground">
-              Vá até Configurações para definir sua API Key.
+              Faça login para acessar as conversas.
             </p>
           </div>
         </div>
@@ -343,7 +345,6 @@ export default function ConversasPage() {
           <p className="text-sm text-muted-foreground">WhatsApp da clínica</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Indicador WebSocket */}
           <span
             className={cn(
               "flex items-center gap-1.5 text-xs",
@@ -453,7 +454,6 @@ export default function ConversasPage() {
         <div className={cn("flex flex-1 flex-col", !mobileShowChat && "hidden md:flex")}>
           {selectedPhone && selectedConversation ? (
             <>
-              {/* Chat header */}
               <div className="flex items-center gap-3 border-b px-4 py-3">
                 <Button variant="ghost" size="icon" onClick={handleBackToList} className="h-8 w-8 md:hidden">
                   <ArrowLeft className="h-4 w-4" />
@@ -509,10 +509,8 @@ export default function ConversasPage() {
                 </div>
               </div>
 
-              {/* Mensagens */}
               <ChatView messages={messages} loading={loadingMessages} patientPhone={selectedPhone} />
 
-              {/* Input de resposta — só aparece em modo humano */}
               {isHumanMode && (
                 <div className="border-t bg-card/50 p-3">
                   <div className="flex items-center gap-2">
@@ -561,7 +559,6 @@ export default function ConversasPage() {
         </div>
       </div>
 
-      {/* Dialog de confirmação */}
       <AlertDialog open={!!confirmAction} onOpenChange={(open) => { if (!open) setConfirmAction(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
