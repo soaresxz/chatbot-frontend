@@ -41,6 +41,10 @@ interface DashboardData {
   conversas_humano: number
   conversas_ia: number
   tempo_medio_resposta_segundos: number
+  plano: string
+  mensagens_mes: number
+  limite_mensagens: number | null
+  percentual_uso: number | null
 }
 
 function CustomTooltip({
@@ -142,6 +146,40 @@ export default function ClinicRelatoriosPage() {
           ) : data ? (
             <>
               <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Uso do Plano</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {data.mensagens_mes.toLocaleString("pt-BR")}
+                  {data.limite_mensagens && (
+                    <span className="text-sm font-normal text-muted-foreground">
+                      {" "}/ {data.limite_mensagens.toLocaleString("pt-BR")}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mb-2">mensagens este mês</p>
+                {data.limite_mensagens && (
+                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={`h-2 rounded-full transition-all ${
+                        (data.percentual_uso ?? 0) >= 90
+                          ? "bg-red-500"
+                          : (data.percentual_uso ?? 0) >= 70
+                          ? "bg-orange-500"
+                          : "bg-primary"
+                      }`}
+                      style={{ width: `${Math.min(data.percentual_uso ?? 0, 100)}%` }}
+                    />
+                  </div>
+                )}
+                {!data.limite_mensagens && (
+                  <p className="text-xs text-primary">ilimitado ✨</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Conversas Hoje</CardTitle>
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
