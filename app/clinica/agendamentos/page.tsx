@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useAppointments, type Appointment, type AppointmentStatus } from "@/lib/appointments"
+import { fetchAppointments, updateAppointmentStatus, deleteAppointment, type Appointment, type AppointmentStatus } from "@/lib/appointments"
 import { cn } from "@/lib/utils"
 
 const STATUS_CONFIG: Record<AppointmentStatus, { label: string; color: string; dot: string }> = {
@@ -110,7 +110,6 @@ function AppointmentRow({ appt, onStatusChange, onDelete }: {
 }
 
 export default function AgendamentosPage() {
-  const { fetchAppointments, updateAppointmentStatus, deleteAppointment } = useAppointments()
   const [filter, setFilter] = useState<Filter>("hoje")
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [total, setTotal] = useState(0)
