@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { fetchClinicHours, upsertClinicHours, type ClinicHours } from "@/lib/api/appointments"
+import { fetchClinicHours, upsertClinicHours, type ClinicHours } from "@/lib/appointments"
 import { cn } from "@/lib/utils"
 
 const DAYS = [
