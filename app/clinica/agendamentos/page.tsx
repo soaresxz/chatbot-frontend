@@ -7,7 +7,7 @@ import {
   deleteAppointment,
   type Appointment,
   type AppointmentStatus,
-} from "@/lib/api/appointments"
+} from "@/lib/appointments"
 import { cn } from "@/lib/utils"
 
 const STATUS_CONFIG: Record<AppointmentStatus, { label: string; color: string; dot: string }> = {
