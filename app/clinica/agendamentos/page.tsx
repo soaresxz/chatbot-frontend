@@ -10,16 +10,12 @@ import {
 } from "@/lib/api/appointments"
 import { cn } from "@/lib/utils"
 
-// ─── Status helpers ───────────────────────────────────────────────────────────
-
-const STATUS_CONFIG: Record<
-  AppointmentStatus,
-  { label: string; color: string; dot: string }
-> = {
-  pendente:   { label: "Pendente",   color: "bg-amber-50 text-amber-700 ring-amber-200",  dot: "bg-amber-400" },
-  confirmado: { label: "Confirmado", color: "bg-emerald-50 text-emerald-700 ring-emerald-200", dot: "bg-emerald-500" },
-  cancelado:  { label: "Cancelado",  color: "bg-red-50 text-red-600 ring-red-200",        dot: "bg-red-400" },
-  concluido:  { label: "Concluído",  color: "bg-slate-100 text-slate-600 ring-slate-200", dot: "bg-slate-400" },
+const STATUS_CONFIG: Record<AppointmentStatus, { label: string; color: string; dot: string }> = {
+  pending:   { label: "Pendente",   color: "bg-amber-50 text-amber-700 ring-amber-200",       dot: "bg-amber-400" },
+  confirmed: { label: "Confirmado", color: "bg-emerald-50 text-emerald-700 ring-emerald-200", dot: "bg-emerald-500" },
+  cancelled: { label: "Cancelado",  color: "bg-red-50 text-red-600 ring-red-200",             dot: "bg-red-400" },
+  completed: { label: "Concluído",  color: "bg-slate-100 text-slate-600 ring-slate-200",      dot: "bg-slate-400" },
+  no_show:   { label: "Faltou",     color: "bg-orange-50 text-orange-600 ring-orange-200",    dot: "bg-orange-400" },
 }
 
 const FILTERS = [
@@ -32,13 +28,11 @@ const FILTERS = [
 type Filter = (typeof FILTERS)[number]["key"]
 
 function formatDate(iso: string) {
-  const d = new Date(iso)
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
+  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
 }
 
 function formatTime(iso: string) {
-  const d = new Date(iso)
-  return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
 }
 
 function formatCurrency(v: number | null) {
@@ -46,10 +40,8 @@ function formatCurrency(v: number | null) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 }
 
-// ─── StatusBadge ─────────────────────────────────────────────────────────────
-
 function StatusBadge({ status }: { status: AppointmentStatus }) {
-  const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.pendente
+  const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending
   return (
     <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset", cfg.color)}>
       <span className={cn("h-1.5 w-1.5 rounded-full", cfg.dot)} />
@@ -58,31 +50,13 @@ function StatusBadge({ status }: { status: AppointmentStatus }) {
   )
 }
 
-// ─── Row actions ──────────────────────────────────────────────────────────────
-
-function ActionButton({
-  onClick,
-  className,
-  children,
-}: {
-  onClick: () => void
-  className?: string
-  children: React.ReactNode
-}) {
+function ActionButton({ onClick, className, children }: { onClick: () => void; className?: string; children: React.ReactNode }) {
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "px-2.5 py-1 rounded text-xs font-medium transition-colors",
-        className
-      )}
-    >
+    <button onClick={onClick} className={cn("px-2.5 py-1 rounded text-xs font-medium transition-colors", className)}>
       {children}
     </button>
   )
 }
-
-// ─── Appointment Row ──────────────────────────────────────────────────────────
 
 function AppointmentRow({
   appt,
@@ -90,11 +64,10 @@ function AppointmentRow({
   onDelete,
 }: {
   appt: Appointment
-  onStatusChange: (id: number, status: AppointmentStatus) => Promise<void>
-  onDelete: (id: number) => Promise<void>
+  onStatusChange: (id: string, status: AppointmentStatus) => Promise<void>
+  onDelete: (id: string) => Promise<void>
 }) {
   const [loading, setLoading] = useState(false)
-
   const handle = async (action: () => Promise<void>) => {
     setLoading(true)
     try { await action() } finally { setLoading(false) }
@@ -102,73 +75,44 @@ function AppointmentRow({
 
   return (
     <tr className="group border-b border-slate-100 last:border-0 hover:bg-slate-50/60 transition-colors">
-      {/* Data / hora */}
       <td className="py-3.5 pl-4 pr-3">
-        <div className="font-semibold text-slate-800 text-sm tabular-nums">
-          {formatDate(appt.scheduled_date)}
-        </div>
+        <div className="font-semibold text-slate-800 text-sm tabular-nums">{formatDate(appt.scheduled_date)}</div>
         <div className="text-xs text-slate-400 mt-0.5">{formatTime(appt.scheduled_date)}</div>
       </td>
-
-      {/* Paciente */}
       <td className="px-3 py-3.5">
-        <div className="font-medium text-slate-700 text-sm">
-          {appt.patient_name ?? "Paciente"}
-        </div>
-        <div className="text-xs text-slate-400 mt-0.5">{appt.patient_phone}</div>
+        <div className="font-medium text-slate-700 text-sm">Paciente</div>
+        <div className="text-xs text-slate-400 mt-0.5">{appt.patient_id}</div>
       </td>
-
-      {/* Procedimento */}
       <td className="px-3 py-3.5">
         <span className="text-sm text-slate-600">{appt.procedure ?? "—"}</span>
       </td>
-
-      {/* Dentista */}
       <td className="hidden md:table-cell px-3 py-3.5">
         <span className="text-sm text-slate-600">{appt.dentist_name ?? "—"}</span>
       </td>
-
-      {/* Valor */}
       <td className="hidden lg:table-cell px-3 py-3.5 text-right">
         <span className="text-sm text-slate-600">{formatCurrency(appt.value)}</span>
       </td>
-
-      {/* Status */}
       <td className="px-3 py-3.5">
         <StatusBadge status={appt.status} />
       </td>
-
-      {/* Ações */}
       <td className="pl-3 pr-4 py-3.5">
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {appt.status === "pendente" && (
+          {appt.status === "pending" && (
             <>
-              <ActionButton
-                onClick={() => handle(() => onStatusChange(appt.id, "confirmado"))}
-                className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-              >
+              <ActionButton onClick={() => handle(() => onStatusChange(appt.id, "confirmed"))} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100">
                 {loading ? "..." : "Confirmar"}
               </ActionButton>
-              <ActionButton
-                onClick={() => handle(() => onStatusChange(appt.id, "cancelado"))}
-                className="bg-red-50 text-red-600 hover:bg-red-100"
-              >
+              <ActionButton onClick={() => handle(() => onStatusChange(appt.id, "cancelled"))} className="bg-red-50 text-red-600 hover:bg-red-100">
                 Cancelar
               </ActionButton>
             </>
           )}
-          {appt.status === "confirmado" && (
-            <ActionButton
-              onClick={() => handle(() => onStatusChange(appt.id, "concluido"))}
-              className="bg-slate-100 text-slate-600 hover:bg-slate-200"
-            >
+          {appt.status === "confirmed" && (
+            <ActionButton onClick={() => handle(() => onStatusChange(appt.id, "completed"))} className="bg-slate-100 text-slate-600 hover:bg-slate-200">
               Concluir
             </ActionButton>
           )}
-          <ActionButton
-            onClick={() => handle(() => onDelete(appt.id))}
-            className="bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500"
-          >
+          <ActionButton onClick={() => handle(() => onDelete(appt.id))} className="bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500">
             ✕
           </ActionButton>
         </div>
@@ -177,8 +121,6 @@ function AppointmentRow({
   )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-
 export default function AgendamentosPage() {
   const [filter, setFilter] = useState<Filter>("hoje")
   const [appointments, setAppointments] = useState<Appointment[]>([])
@@ -186,7 +128,6 @@ export default function AgendamentosPage() {
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
   const PAGE_SIZE = 20
 
   const load = useCallback(async () => {
@@ -204,82 +145,60 @@ export default function AgendamentosPage() {
   }, [filter, page])
 
   useEffect(() => { load() }, [load])
-
-  // Reset para página 1 ao mudar filtro
   useEffect(() => { setPage(1) }, [filter])
 
-  const handleStatusChange = async (id: number, status: AppointmentStatus) => {
+  const handleStatusChange = async (id: string, status: AppointmentStatus) => {
     await updateAppointmentStatus(id, status)
     await load()
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("Remover este agendamento?")) return
     await deleteAppointment(id)
     await load()
   }
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
-
-  // Counters para tabs
-  const countByStatus = appointments.reduce(
-    (acc, a) => { acc[a.status] = (acc[a.status] ?? 0) + 1; return acc },
-    {} as Record<string, number>
-  )
+  const countByStatus = appointments.reduce((acc, a) => {
+    acc[a.status] = (acc[a.status] ?? 0) + 1
+    return acc
+  }, {} as Record<string, number>)
 
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* Header */}
         <div className="mb-8 flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Agendamentos</h1>
-            <p className="mt-1 text-sm text-slate-500">
-              {total} {total === 1 ? "agendamento" : "agendamentos"} encontrados
-            </p>
+            <p className="mt-1 text-sm text-slate-500">{total} {total === 1 ? "agendamento" : "agendamentos"} encontrados</p>
           </div>
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              Atualizado em tempo real
-            </span>
-          </div>
+          <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            Atualizado em tempo real
+          </span>
         </div>
 
-        {/* Stats cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
           {Object.entries(STATUS_CONFIG).map(([status, cfg]) => (
             <div key={status} className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm">
-              <div className="text-2xl font-bold text-slate-800">
-                {countByStatus[status] ?? 0}
-              </div>
-              <div className={cn("text-xs font-medium mt-0.5", cfg.color.split(" ")[1])}>
-                {cfg.label}
-              </div>
+              <div className="text-2xl font-bold text-slate-800">{countByStatus[status] ?? 0}</div>
+              <div className={cn("text-xs font-medium mt-0.5", cfg.color.split(" ")[1])}>{cfg.label}</div>
             </div>
           ))}
         </div>
 
-        {/* Filter tabs */}
         <div className="flex items-center gap-1 mb-4 bg-white rounded-xl border border-slate-200 p-1 w-fit shadow-sm">
           {FILTERS.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={cn(
-                "px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150",
-                filter === f.key
-                  ? "bg-slate-900 text-white shadow-sm"
-                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-              )}
-            >
+            <button key={f.key} onClick={() => setFilter(f.key)}
+              className={cn("px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150",
+                filter === f.key ? "bg-slate-900 text-white shadow-sm" : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+              )}>
               {f.label}
             </button>
           ))}
         </div>
 
-        {/* Table */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           {loading ? (
             <div className="py-24 flex items-center justify-center">
@@ -296,10 +215,7 @@ export default function AgendamentosPage() {
               <div className="text-center">
                 <p className="text-red-500 font-medium mb-2">Erro ao carregar</p>
                 <p className="text-sm text-slate-400 mb-4">{error}</p>
-                <button
-                  onClick={load}
-                  className="px-4 py-2 bg-slate-900 text-white text-sm rounded-lg hover:bg-slate-700 transition-colors"
-                >
+                <button onClick={load} className="px-4 py-2 bg-slate-900 text-white text-sm rounded-lg hover:bg-slate-700 transition-colors">
                   Tentar novamente
                 </button>
               </div>
@@ -330,37 +246,23 @@ export default function AgendamentosPage() {
                 </thead>
                 <tbody>
                   {appointments.map((appt) => (
-                    <AppointmentRow
-                      key={appt.id}
-                      appt={appt}
-                      onStatusChange={handleStatusChange}
-                      onDelete={handleDelete}
-                    />
+                    <AppointmentRow key={appt.id} appt={appt} onStatusChange={handleStatusChange} onDelete={handleDelete} />
                   ))}
                 </tbody>
               </table>
             </div>
           )}
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="border-t border-slate-100 px-4 py-3 flex items-center justify-between">
-              <span className="text-sm text-slate-500">
-                Página {page} de {totalPages} · {total} registros
-              </span>
+              <span className="text-sm text-slate-500">Página {page} de {totalPages} · {total} registros</span>
               <div className="flex gap-2">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="px-3 py-1.5 rounded-lg text-sm border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+                  className="px-3 py-1.5 rounded-lg text-sm border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                   ← Anterior
                 </button>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="px-3 py-1.5 rounded-lg text-sm border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
+                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                  className="px-3 py-1.5 rounded-lg text-sm border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                   Próxima →
                 </button>
               </div>
@@ -368,11 +270,9 @@ export default function AgendamentosPage() {
           )}
         </div>
 
-        {/* Footer note */}
         <p className="mt-4 text-xs text-slate-400 text-center">
           Agendamentos criados pelo bot aparecem aqui automaticamente. Confirmações via WhatsApp atualizam o status em tempo real.
         </p>
-
       </div>
     </div>
   )

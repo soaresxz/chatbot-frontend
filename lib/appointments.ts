@@ -1,22 +1,19 @@
 /**
  * lib/api/appointments.ts
- * Cliente de API para agendamentos — substitui todos os mocks.
  */
 
-export type AppointmentStatus = "pendente" | "confirmado" | "cancelado" | "concluido"
+// Espelha exatamente o enum do backend
+export type AppointmentStatus = "pending" | "confirmed" | "cancelled" | "completed" | "no_show"
 
 export interface Appointment {
-  id: number
-  tenant_id: number
-  patient_id: number | null
-  patient_name: string | null
-  patient_phone: string
+  id: string
+  tenant_id: string
+  patient_id: string
   dentist_name: string | null
   procedure: string | null
   value: number | null
-  scheduled_date: string   // ISO string
+  scheduled_date: string
   status: AppointmentStatus
-  notes: string | null
   created_at: string
   confirmed_at: string | null
 }
@@ -34,11 +31,22 @@ export interface AvailableSlots {
   slots: string[]
 }
 
+export interface ClinicHours {
+  id: string
+  tenant_id: string
+  day_of_week: number
+  day_name: string
+  start_time: string
+  end_time: string
+  slot_duration_minutes: number
+  is_active: boolean
+}
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://chatbotia-production.up.railway.app"
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`${BASE_URL}/api/v1${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
@@ -53,8 +61,6 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json()
 }
 
-// ─── Appointments ────────────────────────────────────────────────────────────
-
 export async function fetchAppointments(
   filter: "hoje" | "amanha" | "pendentes" | "todos" = "todos",
   page = 1,
@@ -63,41 +69,23 @@ export async function fetchAppointments(
   return apiFetch(`/appointments?filter=${filter}&page=${page}&page_size=${pageSize}`)
 }
 
-export async function fetchAppointment(id: number): Promise<Appointment> {
+export async function fetchAppointment(id: string): Promise<Appointment> {
   return apiFetch(`/appointments/${id}`)
 }
 
-export async function updateAppointmentStatus(
-  id: number,
-  status: AppointmentStatus
-): Promise<Appointment> {
+export async function updateAppointmentStatus(id: string, status: AppointmentStatus): Promise<Appointment> {
   return apiFetch(`/appointments/${id}/status`, {
     method: "PATCH",
     body: JSON.stringify({ status }),
   })
 }
 
-export async function deleteAppointment(id: number): Promise<void> {
+export async function deleteAppointment(id: string): Promise<void> {
   await apiFetch(`/appointments/${id}`, { method: "DELETE" })
 }
 
-// ─── Slots ───────────────────────────────────────────────────────────────────
-
 export async function fetchAvailableSlots(date: string): Promise<AvailableSlots> {
   return apiFetch(`/appointments/slots?date=${date}`)
-}
-
-// ─── Clinic Hours ────────────────────────────────────────────────────────────
-
-export interface ClinicHours {
-  id: number
-  tenant_id: number
-  day_of_week: number
-  day_name: string
-  start_time: string   // "HH:MM:SS"
-  end_time: string
-  slot_duration_minutes: number
-  is_active: boolean
 }
 
 export async function fetchClinicHours(): Promise<ClinicHours[]> {
