@@ -45,7 +45,7 @@ export interface ClinicHours {
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://chatbotia-production.up.railway.app"
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
+  const token = typeof window !== "undefined" ? localStorage.getItem("odontoia_token") : null
   const res = await fetch(`${BASE_URL}/api/v1${path}`, {
     ...init,
     headers: {
