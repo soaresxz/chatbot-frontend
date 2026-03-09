@@ -1,6 +1,6 @@
 "use client"
 
-import { use State, useEffect } from "react"
+import { useCallback } from "react"
 import { useApiConfig } from "./api-config"
 
 export type AppointmentStatus = "pending" | "confirmed" | "cancelled" | "completed" | "no_show"
