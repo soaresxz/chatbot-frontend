@@ -1,13 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import {
-  fetchAppointments,
-  updateAppointmentStatus,
-  deleteAppointment,
-  type Appointment,
-  type AppointmentStatus,
-} from "@/lib/appointments"
+import { useAppointments, type Appointment, type AppointmentStatus } from "@/lib/appointments"
 import { cn } from "@/lib/utils"
 
 const STATUS_CONFIG: Record<AppointmentStatus, { label: string; color: string; dot: string }> = {
@@ -30,11 +24,9 @@ type Filter = (typeof FILTERS)[number]["key"]
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
 }
-
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
 }
-
 function formatCurrency(v: number | null) {
   if (v == null) return "—"
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
@@ -58,11 +50,7 @@ function ActionButton({ onClick, className, children }: { onClick: () => void; c
   )
 }
 
-function AppointmentRow({
-  appt,
-  onStatusChange,
-  onDelete,
-}: {
+function AppointmentRow({ appt, onStatusChange, onDelete }: {
   appt: Appointment
   onStatusChange: (id: string, status: AppointmentStatus) => Promise<void>
   onDelete: (id: string) => Promise<void>
@@ -122,6 +110,7 @@ function AppointmentRow({
 }
 
 export default function AgendamentosPage() {
+  const { fetchAppointments, updateAppointmentStatus, deleteAppointment } = useAppointments()
   const [filter, setFilter] = useState<Filter>("hoje")
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [total, setTotal] = useState(0)
@@ -142,7 +131,7 @@ export default function AgendamentosPage() {
     } finally {
       setLoading(false)
     }
-  }, [filter, page])
+  }, [filter, page, fetchAppointments])
 
   useEffect(() => { load() }, [load])
   useEffect(() => { setPage(1) }, [filter])
@@ -173,14 +162,16 @@ export default function AgendamentosPage() {
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Agendamentos</h1>
             <p className="mt-1 text-sm text-slate-500">{total} {total === 1 ? "agendamento" : "agendamentos"} encontrados</p>
           </div>
-          <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            Atualizado em tempo real
-          </span>
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              Atualizado em tempo real
+            </span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-          {Object.entries(STATUS_CONFIG).map(([status, cfg]) => (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          {Object.entries(STATUS_CONFIG).slice(0, 4).map(([status, cfg]) => (
             <div key={status} className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm">
               <div className="text-2xl font-bold text-slate-800">{countByStatus[status] ?? 0}</div>
               <div className={cn("text-xs font-medium mt-0.5", cfg.color.split(" ")[1])}>{cfg.label}</div>
