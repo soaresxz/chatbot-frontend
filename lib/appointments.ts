@@ -9,6 +9,7 @@ export interface Appointment {
   id: string
   tenant_id: string
   patient_id: string
+  patient?: { id: string; name: string; phone: string }
   dentist_name: string | null
   procedure: string | null
   value: number | null

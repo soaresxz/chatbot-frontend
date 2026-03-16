@@ -93,8 +93,8 @@ function AppointmentRow({ appt, onStatusChange, onDelete }: {
         <div className="text-xs text-muted-foreground mt-0.5">{formatTime(appt.scheduled_date)}</div>
       </td>
       <td className="px-3 py-3.5">
-        <div className="font-medium text-foreground text-sm">Paciente</div>
-        <div className="text-xs text-muted-foreground mt-0.5 font-mono">{appt.patient_id.slice(0, 8)}…</div>
+        <div className="font-medium text-foreground text-sm">{appt.patient?.name ?? "Paciente"}</div>
+        <div className="text-xs text-muted-foreground mt-0.5 font-mono">{appt.patient?.phone || appt.patient_id.slice(0, 8)}…</div>
       </td>
       <td className="px-3 py-3.5">
         <span className="text-sm text-muted-foreground">{appt.procedure ?? "—"}</span>
