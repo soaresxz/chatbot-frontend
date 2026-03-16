@@ -207,7 +207,7 @@ export default function AgendamentosPage() {
       const { updateAppointment } = await import("@/lib/appointments")
       await updateAppointment(editingAppt.id, editForm)
       setEditingAppt(null)
-      loadData()
+      load()
     } catch (err: any) {
       alert("Erro ao editar: " + err.message)
     }
