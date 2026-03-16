@@ -74,10 +74,10 @@ export async function fetchAppointment(id: string): Promise<Appointment> {
   return apiFetch(`/appointments/${id}`)
 }
 
-export async function updateAppointmentStatus(id: string, status: AppointmentStatus): Promise<Appointment> {
-  return apiFetch(`/appointments/${id}/status`, {
+export async function updateAppointment(id: string, data: Partial<Appointment> & { patient_name?: string; patient_phone?: string }): Promise<Appointment> {
+  return apiFetch(`/appointments/${id}`, {
     method: "PATCH",
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(data),
   })
 }
 

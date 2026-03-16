@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { Calendar, CheckCircle, XCircle, Clock } from "lucide-react"
+import { updateAppointment } from "@/lib/appointments"
 
 type AppointmentStatus = "pending" | "confirmed" | "cancelled" | "completed" | "no_show"
 
@@ -76,10 +77,11 @@ function ActionBtn({ onClick, className, children }: { onClick: () => void; clas
   )
 }
 
-function AppointmentRow({ appt, onStatusChange, onDelete }: {
+function AppointmentRow({ appt, onStatusChange, onDelete, onEdit }: {
   appt: Appointment
   onStatusChange: (id: string, status: AppointmentStatus) => Promise<void>
   onDelete: (id: string) => Promise<void>
+  onEdit: (appt: Appointment) => void
 }) {
   const [loading, setLoading] = useState(false)
   const handle = async (action: () => Promise<void>) => {
@@ -109,6 +111,9 @@ function AppointmentRow({ appt, onStatusChange, onDelete }: {
       <td className="px-3 py-3.5"><StatusBadge status={appt.status} /></td>
       <td className="pl-3 pr-4 py-3.5">
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <ActionBtn onClick={() => onEdit(appt)} className="bg-blue-500/10 text-blue-400 hover:bg-blue-500/20">
+            Editar
+          </ActionBtn>
           {appt.status === "pending" && (
             <>
               <ActionBtn onClick={() => handle(() => onStatusChange(appt.id, "confirmed"))} className="bg-teal-500/10 text-teal-400 hover:bg-teal-500/20">
@@ -140,6 +145,27 @@ export default function AgendamentosPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
+
+  // Edit Appt State
+  const [editingAppt, setEditingAppt] = useState<Appointment | null>(null)
+  const [editForm, setEditForm] = useState({
+    patient_name: "",
+    patient_phone: "",
+    procedure: "",
+    dentist_name: "",
+  })
+
+  useEffect(() => {
+    if (editingAppt) {
+      setEditForm({
+        patient_name: editingAppt.patient?.name || "",
+        patient_phone: editingAppt.patient?.phone || "",
+        procedure: editingAppt.procedure || "",
+        dentist_name: editingAppt.dentist_name || "",
+      })
+    }
+  }, [editingAppt])
+  
   const [error, setError] = useState<string | null>(null)
   const PAGE_SIZE = 20
 
@@ -173,6 +199,18 @@ export default function AgendamentosPage() {
       method: "PATCH", headers: authHeaders(), body: JSON.stringify({ status }),
     })
     await load()
+  }
+
+  const handleEditSave = async () => {
+    if (!editingAppt) return
+    try {
+      const { updateAppointment } = await import("@/lib/appointments")
+      await updateAppointment(editingAppt.id, editForm)
+      setEditingAppt(null)
+      loadData()
+    } catch (err: any) {
+      alert("Erro ao editar: " + err.message)
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -288,7 +326,13 @@ export default function AgendamentosPage() {
               </thead>
               <tbody>
                 {appointments.map((appt) => (
-                  <AppointmentRow key={appt.id} appt={appt} onStatusChange={handleStatusChange} onDelete={handleDelete} />
+                  <AppointmentRow 
+                    key={appt.id} 
+                    appt={appt} 
+                    onStatusChange={handleStatusChange} 
+                    onDelete={handleDelete} 
+                    onEdit={setEditingAppt}
+                  />
                 ))}
               </tbody>
             </table>
