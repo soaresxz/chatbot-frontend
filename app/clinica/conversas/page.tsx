@@ -146,14 +146,18 @@ export default function ConversasPage() {
         if (data.type === "new_message") {
           const msg = data.message
           const phone = data.patient_phone || msg?.patient_phone
+          
+          const normalizePhone = (p: string | null) => p ? p.replace(/\D/g, "") : ""
+          const cleanPhone = normalizePhone(phone)
+          const cleanSelected = normalizePhone(selectedPhoneRef.current)
 
-          console.log("[WS] new_message | phone:", phone, "| selected:", selectedPhoneRef.current)
+          console.log("[WS] new_message | phone:", cleanPhone, "| selected:", cleanSelected)
 
           setConversations((prev) => {
-            const exists = prev.find((c) => c.patient_phone === phone)
+            const exists = prev.find((c) => normalizePhone(c.patient_phone) === cleanPhone)
             if (exists) {
               return prev.map((c) =>
-                c.patient_phone === phone
+                normalizePhone(c.patient_phone) === cleanPhone
                   ? { ...c, last_message: msg.content, updated_at: msg.timestamp }
                   : c
               )
@@ -162,7 +166,7 @@ export default function ConversasPage() {
             return prev
           })
 
-          if (selectedPhoneRef.current === phone) {
+          if (cleanSelected === cleanPhone) {
             setMessages((prev) => {
               const alreadyExists = prev.find((m) => m.id === msg.id)
               if (alreadyExists) return prev
@@ -176,7 +180,7 @@ export default function ConversasPage() {
         if (data.type === "status_change") {
           setConversations((prev) =>
             prev.map((c) =>
-              c.patient_phone === data.patient_phone
+              normalizePhone(c.patient_phone) === normalizePhone(data.patient_phone)
                 ? { ...c, status: data.status }
                 : c
             )
