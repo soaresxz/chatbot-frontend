@@ -49,6 +49,10 @@ function formatTimeAgo(dateStr: string): string {
   }
 }
 
+function normalizePhone(p: string | null | undefined): string {
+  return p ? p.replace(/\D/g, "") : ""
+}
+
 export default function ConversasPage() {
   const { user } = useAuth()
   // ✅ authHeaders adicionado ao destructuring
@@ -147,7 +151,6 @@ export default function ConversasPage() {
           const msg = data.message
           const phone = data.patient_phone || msg?.patient_phone
           
-          const normalizePhone = (p: string | null) => p ? p.replace(/\D/g, "") : ""
           const cleanPhone = normalizePhone(phone)
           const cleanSelected = normalizePhone(selectedPhoneRef.current)
 
