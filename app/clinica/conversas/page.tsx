@@ -170,12 +170,14 @@ export default function ConversasPage() {
           })
 
           if (cleanSelected === cleanPhone) {
+            console.log("[WS] Appending to active chat!", msg)
             setMessages((prev) => {
               const alreadyExists = prev.find((m) => m.id === msg.id)
               if (alreadyExists) return prev
               return [...prev, msg]
             })
           } else {
+            console.log("[WS] Not appending because chat is inactive. active:", cleanSelected, "msg:", cleanPhone)
             toast.info(`Nova mensagem de ${phone}`)
           }
         }
