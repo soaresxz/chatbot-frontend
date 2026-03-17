@@ -7,6 +7,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { Calendar, CheckCircle, XCircle, Clock } from "lucide-react"
 import { updateAppointment } from "@/lib/appointments"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
 
 type AppointmentStatus = "pending" | "confirmed" | "cancelled" | "completed" | "no_show"
 
@@ -359,6 +363,69 @@ export default function AgendamentosPage() {
       <p className="text-xs text-muted-foreground text-center">
         Agendamentos criados pelo bot aparecem aqui automaticamente. Confirmações via WhatsApp atualizam o status em tempo real.
       </p>
+
+      <Dialog open={!!editingAppt} onOpenChange={(open) => !open && setEditingAppt(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Editar Agendamento</DialogTitle>
+            <DialogDescription>
+              Ajuste os dados do paciente, procedimento ou do agendamento.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="patient_name" className="text-right">
+                Nome
+              </Label>
+              <Input
+                id="patient_name"
+                value={editForm.patient_name}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, patient_name: e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="patient_phone" className="text-right">
+                Telefone
+              </Label>
+              <Input
+                id="patient_phone"
+                value={editForm.patient_phone}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, patient_phone: e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="procedure" className="text-right">
+                Procedimento
+              </Label>
+              <Input
+                id="procedure"
+                value={editForm.procedure}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, procedure: e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="dentist_name" className="text-right">
+                Dentista
+              </Label>
+              <Input
+                id="dentist_name"
+                value={editForm.dentist_name}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, dentist_name: e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingAppt(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleEditSave}>Salvar Alterações</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
